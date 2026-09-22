@@ -1,0 +1,91 @@
+body {
+    font-family: system-ui, -apple-system, sans-serif;
+    max-width: 700px;
+    margin: 40px auto;
+    padding: 0 20px;
+    color: #222;
+}
+
+h1 {
+    color: #2c3e50;
+}
+
+input {
+    display: block;
+    width: 100%;
+    padding: 10px;
+    margin: 8px 0;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 16px;
+}
+
+button {
+    padding: 10px 20px;
+    background: #2c3e50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #1a252f;
+}
+
+#message {
+    color: #c0392b;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.deck-item, .card-item {
+    padding: 12px;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    margin: 8px 0;
+}
+
+.deck-item a {
+    text-decoration: none;
+    color: #2c3e50;
+    font-weight: bold;
+}
+.flashcard {
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f8f9fa;
+    border: 2px solid #2c3e50;
+    border-radius: 12px;
+    font-size: 28px;
+    cursor: pointer;
+    user-select: none;
+    padding: 20px;
+    text-align: center;
+}
+
+.flashcard:hover {
+    background: #eef1f4;
+}
+
+#answer-buttons button {
+    margin-right: 10px;
+}
+
+#progress {
+    color: #888;
+}
+
+#hint {
+    color: #888;
+    font-size: 14px;
+}

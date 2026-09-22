@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>词卡集详情</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <p><a href="index.html">← 返回首页</a></p>
+
+    <h1 id="deck-title">加载中...</h1>
+    <p><a id="study-link" href="#">开始学习 →</a></p>
+
+    <section id="add-card-section" style="display:none;">
+        <h2>添加单词卡</h2>
+        <form id="add-card-form">
+            <input type="text" id="card-front" placeholder="正面，如：苹果" required>
+            <input type="text" id="card-back" placeholder="背面，如：apple" required>
+            <button type="submit">添加</button>
+        </form>
+        <p id="card-message"></p>
+    </section>
+
+    <section>
+        <h2>单词卡列表</h2>
+        <div id="cards-list">加载中...</div>
+    </section>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+        const supabase = createClient(
+            'https://hjlnubicstqnlappbrjc.supabase.co',
+            'sb_publishable_oyxAGzlhR4oXmhH8rrs0rw_uHMbzsVx'
+        )
+
+        const params = new URLSearchParams(window.location.search)
+        const deckId = params.get('id')
+
+        const deckTitleEl = document.getElementById('deck-title')
+        const addCardSection = document.getElementById('add-card-section')
+        const addCardForm = document.getElementById('add-card-form')
+        const cardFront = document.getElementById('card-front')
+        const cardBack = document.getElementById('card-back')
+        const cardMessage = document.getElementById('card-message')
+        const cardsList = document.getElementById('cards-list')
+
+        let currentUser = null
+        let deckOwnerId = null
+
+        async function init() {
+            const { data: { session } } = await supabase.auth.getSession()
+            currentUser = session?.user ?? null
+
+            // 加载词卡集信息
+            const { data: deck, error: deckError } = await supabase
+                .from('decks')
+                .select('*')
+                .eq('id', deckId)
+                .single()
+
+            if (deckError) {
+                deckTitleEl.textContent = '加载失败：' + deckError.message
+                return
+            }
+
+            deckOwnerId = deck.user_id
+            deckTitleEl.textContent = deck.title
+
+            // 非创建者直接进入学习模式，不看列表
+            if (!currentUser || currentUser.id !== deckOwnerId) {
+                window.location.href = `study.html?id=${deckId}`
+                return
+            }
+
+            // 创建者才显示添加表单和列表
+            addCardSection.style.display = 'block'
+            loadCards()
+        }
+
+        // 添加单词卡
+        addCardForm?.addEventListener('submit', async (e) => {
+            e.preventDefault()
+            cardMessage.textContent = '添加中...'
+
+            const { error } = await supabase
+                .from('cards')
+                .insert({
+                    deck_id: deckId,
+                    front: cardFront.value,
+                    back: cardBack.value
+                })
+
+            if (error) {
+                cardMessage.textContent = '出错了：' + error.message
+                return
+            }
+
+            cardMessage.textContent = '添加成功'
+            cardFront.value = ''
+            cardBack.value = ''
+            loadCards()
+        })
+
+        // 加载单词卡
+        async function loadCards() {
+            const { data, error } = await supabase
+                .from('cards')
+                .select('*')
+                .eq('deck_id', deckId)
+                .order('front', { ascending: true })
+                
+            if (error) {
+                cardsList.textContent = '加载失败：' + error.message
+                return
+            }
+
+            if (data.length === 0) {
+                cardsList.textContent = '还没有单词卡。'
+                return
+            }
+
+            cardsList.innerHTML = data.map(card => `
+                <div class="card-item">
+                    <strong>${card.front}</strong> → ${card.back}
+                </div>
+            `).join('')
+        }
+
+        init()
+    </script>
+</body>
+</html>

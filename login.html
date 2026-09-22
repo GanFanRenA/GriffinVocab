@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录 / 注册 - 词卡教学网站</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <h1>词卡教学网站</h1>
+
+    <div id="auth-section">
+        <h2 id="auth-title">登录</h2>
+
+        <form id="auth-form">
+            <input type="email" id="email" placeholder="邮箱" required>
+            <input type="password" id="password" placeholder="密码" required>
+            <button type="submit" id="submit-btn">登录</button>
+        </form>
+
+        <p>
+            <span id="toggle-text">还没有账号？</span>
+            <a href="#" id="toggle-link">去注册</a>
+        </p>
+
+        <p id="message"></p>
+    </div>
+
+    <p><a href="index.html">返回首页</a></p>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+        const supabase = createClient(
+            'https://hjlnubicstqnlappbrjc.supabase.co',
+            'sb_publishable_oyxAGzlhR4oXmhH8rrs0rw_uHMbzsVx'
+        )
+
+        let isLoginMode = true
+
+        const form = document.getElementById('auth-form')
+        const emailInput = document.getElementById('email')
+        const passwordInput = document.getElementById('password')
+        const submitBtn = document.getElementById('submit-btn')
+        const authTitle = document.getElementById('auth-title')
+        const toggleText = document.getElementById('toggle-text')
+        const toggleLink = document.getElementById('toggle-link')
+        const message = document.getElementById('message')
+
+        // 切换登录 / 注册
+        toggleLink.addEventListener('click', (e) => {
+            e.preventDefault()
+            isLoginMode = !isLoginMode
+            authTitle.textContent = isLoginMode ? '登录' : '注册'
+            submitBtn.textContent = isLoginMode ? '登录' : '注册'
+            toggleText.textContent = isLoginMode ? '还没有账号？' : '已经有账号？'
+            toggleLink.textContent = isLoginMode ? '去注册' : '去登录'
+            message.textContent = ''
+        })
+
+        // 提交表单
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault()
+            message.textContent = '处理中...'
+
+            const email = emailInput.value
+            const password = passwordInput.value
+
+            let result
+            if (isLoginMode) {
+                result = await supabase.auth.signInWithPassword({ email, password })
+            } else {
+                result = await supabase.auth.signUp({ email, password })
+            }
+
+            if (result.error) {
+                message.textContent = '出错了：' + result.error.message
+                return
+            }
+
+            if (isLoginMode) {
+                message.textContent = '登录成功，正在跳转...'
+                window.location.href = 'index.html'
+            } else {
+                message.textContent = '注册成功！请检查邮箱确认（如果开启了邮箱验证），然后登录。'
+            }
+        })
+    </script>
+</body>
+</html>

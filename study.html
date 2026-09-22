@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学习模式</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <p><a id="back-link" href="index.html">← 返回</a></p>
+
+    <h1 id="deck-title">加载中...</h1>
+
+    <div id="study-area" style="display:none;">
+        <p id="progress"></p>
+
+        <div id="flashcard" class="flashcard">
+            <div id="card-text">...</div>
+        </div>
+
+        <p id="hint">点击卡片翻面</p>
+
+        <div id="answer-buttons" style="display:none;">
+            <button id="know-btn">会</button>
+            <button id="dont-know-btn">不会</button>
+        </div>
+    </div>
+
+    <p id="done-message" style="display:none;"></p>
+
+    <script type="module">
+        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+
+        const supabase = createClient(
+            'https://hjlnubicstqnlappbrjc.supabase.co',
+            'sb_publishable_oyxAGzlhR4oXmhH8rrs0rw_uHMbzsVx'
+        )
+
+        const params = new URLSearchParams(window.location.search)
+        const deckId = params.get('id')
+
+        const deckTitleEl = document.getElementById('deck-title')
+        const backLink = document.getElementById('back-link')
+        const studyArea = document.getElementById('study-area')
+        const progressEl = document.getElementById('progress')
+        const flashcard = document.getElementById('flashcard')
+        const cardText = document.getElementById('card-text')
+        const hint = document.getElementById('hint')
+        const answerButtons = document.getElementById('answer-buttons')
+        const knowBtn = document.getElementById('know-btn')
+        const dontKnowBtn = document.getElementById('dont-know-btn')
+        const doneMessage = document.getElementById('done-message')
+
+        let allCards = []        // 词卡集里的全部卡片（不变）
+        let cards = []           // 当前这一轮要过的卡片
+        let currentIndex = 0
+        let showingFront = true
+        let knownCount = 0
+        let unknownCount = 0
+        let unknownCards = []    // 本轮标记“不会”的卡片
+
+        backLink.href = `deck.html?id=${deckId}`
+
+        async function init() {
+            // 判断当前用户是不是创建者
+            const { data: { session } } = await supabase.auth.getSession()
+            const currentUser = session?.user ?? null
+
+            const { data: deck } = await supabase
+                .from('decks')
+                .select('title, user_id')
+                .eq('id', deckId)
+                .single()
+
+            if (deck) deckTitleEl.textContent = deck.title
+
+            // 非创建者返回首页，创建者返回词卡集详情
+            if (!currentUser || currentUser.id !== deck.user_id) {
+                backLink.href = 'index.html'
+                backLink.textContent = '← 返回首页'
+            } else {
+                backLink.href = `deck.html?id=${deckId}`
+            }
+
+            const { data, error } = await supabase
+                .from('cards')
+                .select('*')
+                .eq('deck_id', deckId)
+
+            if (error) {
+                deckTitleEl.textContent = '加载失败：' + error.message
+                return
+            }
+
+            if (!data || data.length === 0) {
+                deckTitleEl.textContent = '这个词卡集还没有单词卡'
+                return
+            }
+
+            allCards = data
+            startRound(allCards)
+        }
+
+        // 开始一轮学习，传入这一轮要过的卡片数组
+        function startRound(cardList) {
+            cards = [...cardList]
+            currentIndex = 0
+            knownCount = 0
+            unknownCount = 0
+            unknownCards = []
+            doneMessage.style.display = 'none'
+            studyArea.style.display = 'block'
+            showCard()
+        }
+
+        function showCard() {
+            const card = cards[currentIndex]
+            showingFront = true
+            cardText.textContent = card.front
+            hint.textContent = '点击卡片翻面'
+            answerButtons.style.display = 'none'
+            progressEl.textContent = `${currentIndex + 1} / ${cards.length}`
+        }
+
+        flashcard.addEventListener('click', () => {
+            const card = cards[currentIndex]
+            if (showingFront) {
+                cardText.textContent = card.back
+                hint.textContent = '这张卡你掌握了吗？'
+                answerButtons.style.display = 'block'
+                showingFront = false
+            } else {
+                cardText.textContent = card.front
+                hint.textContent = '点击卡片翻面'
+                answerButtons.style.display = 'none'
+                showingFront = true
+            }
+        })
+
+        function nextCard(known) {
+            if (known) {
+                knownCount++
+            } else {
+                unknownCount++
+                unknownCards.push(cards[currentIndex])
+            }
+
+            currentIndex++
+            if (currentIndex >= cards.length) {
+                showDone()
+            } else {
+                showCard()
+            }
+        }
+
+        function showDone() {
+            studyArea.style.display = 'none'
+            doneMessage.style.display = 'block'
+
+            let html = `<p>完成！本轮共 ${cards.length} 张，掌握 ${knownCount} 张，未掌握 ${unknownCount} 张。</p>`
+            html += `<button id="restart-all-btn">全部重学</button>`
+
+            if (unknownCards.length > 0) {
+                html += `<button id="review-unknown-btn">巩固知识（重学不会的 ${unknownCards.length} 张）</button>`
+            }
+
+            html += `<a href="index.html">返回首页</a>`
+            doneMessage.innerHTML = html
+
+            document.getElementById('restart-all-btn').addEventListener('click', () => {
+                startRound(allCards)
+            })
+
+            const reviewBtn = document.getElementById('review-unknown-btn')
+            if (reviewBtn) {
+                reviewBtn.addEventListener('click', () => {
+                    startRound(unknownCards)
+                })
+            }
+        }
+
+        knowBtn.addEventListener('click', () => nextCard(true))
+        dontKnowBtn.addEventListener('click', () => nextCard(false))
+
+        init()
+    </script>
+</body>
+</html>
