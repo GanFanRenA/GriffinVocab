@@ -29,10 +29,7 @@
     <p id="done-message" style="display:none;"></p>
 
     <script type="module">
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session) {
-            window.location.href = 'login.html'
-        }
+        
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
 
         const supabase = createClient(
