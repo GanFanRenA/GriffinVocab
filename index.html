@@ -31,12 +31,10 @@
 
     <script type="module">
         
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+       import { supabase, requireLogin, logout } from './script.js'
 
-        const supabase = createClient(
-            'https://hjlnubicstqnlappbrjc.supabase.co',
-            'sb_publishable_oyxAGzlhR4oXmhH8rrs0rw_uHMbzsVx'
-        )
+        const currentUser = await requireLogin()
+        if (!currentUser) throw new Error('未登录，正在跳转')
 
         const userArea = document.getElementById('user-area')
         const userEmail = document.getElementById('user-email')
@@ -47,27 +45,12 @@
         const createMessage = document.getElementById('create-message')
         const decksList = document.getElementById('decks-list')
 
-        let currentUser = null
-
-        // 检查登录状态
-        async function init() {
-            const { data: { session } } = await supabase.auth.getSession()
-            currentUser = session?.user ?? null
-
-            if (currentUser) {
-                userEmail.textContent = currentUser.email
-                createSection.style.display = 'block'
-            } else {
-                userArea.innerHTML = '<a href="login.html">登录 / 注册</a>'
-            }
-
-            loadDecks()
-        }
+        userEmail.textContent = currentUser.email
+        createSection.style.display = 'block'
 
         // 登出
         logoutBtn?.addEventListener('click', async () => {
-            await supabase.auth.signOut()
-            window.location.reload()
+            await logout()
         })
 
         // 创建词卡集
@@ -113,7 +96,7 @@
             `).join('')
         }
 
-        init()
+        loadDecks()
     </script>
 </body>
 </html>

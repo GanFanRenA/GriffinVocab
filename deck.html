@@ -10,6 +10,12 @@
     <p><a href="index.html">← 返回首页</a></p>
 
     <h1 id="deck-title">加载中...</h1>
+    
+    <div id="deck-actions" style="display:none;">
+        <button id="edit-deck-btn">编辑标题</button>
+        <button id="delete-deck-btn">删除词卡集</button>
+    </div>
+
     <p><a id="study-link" href="#">开始学习 →</a></p>
 
     <section id="add-card-section" style="display:none;">
@@ -80,6 +86,80 @@
             loadCards()
         }
 
+        // 显示操作按钮（仅创建者）
+        if (currentUser && currentUser.id === deckOwnerId) {
+            addCardSection.style.display = 'block'
+            deckActions.style.display = 'block'
+        }
+
+        // 编辑词卡集标题
+        document.getElementById('edit-deck-btn')?.addEventListener('click', async () => {
+            const newTitle = prompt('新的标题：', deckTitleEl.textContent)
+            if (!newTitle) return
+
+            const { error } = await supabase
+                .from('decks')
+                .update({ title: newTitle })
+                .eq('id', deckId)
+
+            if (error) {
+                alert('修改失败：' + error.message)
+                return
+            }
+            deckTitleEl.textContent = newTitle
+        })
+
+        // 删除词卡集
+        document.getElementById('delete-deck-btn')?.addEventListener('click', async () => {
+            if (!confirm('确定删除这个词卡集？里面的所有单词卡也会一起删除。')) return
+
+            const { error } = await supabase
+                .from('decks')
+                .delete()
+                .eq('id', deckId)
+
+            if (error) {
+                alert('删除失败：' + error.message)
+                return
+            }
+            window.location.href = 'index.html'
+        })
+
+        // 编辑单词卡
+        async function editCard(cardId) {
+            const newFront = prompt('新的正面：')
+            if (newFront === null) return
+            const newBack = prompt('新的背面：')
+            if (newBack === null) return
+
+            const { error } = await supabase
+                .from('cards')
+                .update({ front: newFront, back: newBack })
+                .eq('id', cardId)
+
+            if (error) {
+                alert('修改失败：' + error.message)
+                return
+            }
+            loadCards()
+        }
+
+        // 删除单词卡
+        async function deleteCard(cardId) {
+            if (!confirm('确定删除这张单词卡？')) return
+
+            const { error } = await supabase
+                .from('cards')
+                .delete()
+                .eq('id', cardId)
+
+            if (error) {
+                alert('删除失败：' + error.message)
+                return
+            }
+            loadCards()
+        }
+
         // 添加单词卡
         addCardForm?.addEventListener('submit', async (e) => {
             e.preventDefault()
@@ -123,10 +203,22 @@
             }
 
             cardsList.innerHTML = data.map(card => `
-                <div class="card-item">
+                <div class="card-item" data-id="${card.id}">
                     <strong>${card.front}</strong> → ${card.back}
+                    <div class="card-actions">
+                        <button class="edit-card-btn" data-id="${card.id}">编辑</button>
+                        <button class="delete-card-btn" data-id="${card.id}">删除</button>
+                    </div>
                 </div>
             `).join('')
+
+            // 绑定编辑 / 删除事件
+            document.querySelectorAll('.edit-card-btn').forEach(btn => {
+                btn.addEventListener('click', () => editCard(btn.dataset.id))
+            })
+            document.querySelectorAll('.delete-card-btn').forEach(btn => {
+                btn.addEventListener('click', () => deleteCard(btn.dataset.id))
+            })
         }
 
         init()
