@@ -109,3 +109,18 @@ header {
 #deck-actions button {
     margin-right: 8px;
 }
+
+.deck-meta {
+    font-size: 13px;
+    color: #888;
+    margin-top: 4px;
+}
+
+#search-input {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 16px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 15px;
+}

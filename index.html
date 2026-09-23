@@ -29,6 +29,7 @@
 
     <section>
         <h2>所有词卡集</h2>
+        <input type="text" id="search-input" placeholder="搜索标题或作者...">
         <div id="decks-list">加载中...</div>
     </section>
 
@@ -66,7 +67,8 @@
                 .insert({
                     title: deckTitle.value,
                     user_id: currentUser.id,
-                    shuffle: document.getElementById('deck-shuffle').checked
+                    shuffle: document.getElementById('deck-shuffle').checked,
+                    author_name: currentUser.email.split('@')[0]
                 })
 
             if (error) {
@@ -79,11 +81,29 @@
             loadDecks()
         })
 
-        // 加载所有词卡集
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const keyword = e.target.value.trim().toLowerCase()
+
+            if (!keyword) {
+                renderDecks(allDecks)
+                return
+            }
+
+            const filtered = allDecks.filter(deck => {
+                const title = (deck.title || '').toLowerCase()
+                const author = (deck.author_name || '').toLowerCase()
+                return title.includes(keyword) || author.includes(keyword)
+            })
+
+            renderDecks(filtered)
+        })
+
+        let allDecks = []
+
         async function loadDecks() {
             const { data, error } = await supabase
                 .from('decks')
-                .select('*')
+                .select('*, cards(count)')
                 .order('created_at', { ascending: false })
 
             if (error) {
@@ -91,20 +111,31 @@
                 return
             }
 
-            if (data.length === 0) {
-                decksList.textContent = '还没有词卡集，登录后创建一个吧。'
+            allDecks = data
+            renderDecks(allDecks)
+        }
+
+        function renderDecks(decks) {
+            if (decks.length === 0) {
+                decksList.textContent = '没有找到匹配的词卡集。'
                 return
             }
 
-            decksList.innerHTML = data.map(deck => {
+            decksList.innerHTML = decks.map(deck => {
                 const isOwner = deck.user_id === currentUser.id
                 const target = isOwner
                     ? `deck.html?id=${deck.id}`
                     : `study.html?id=${deck.id}`
 
+                const cardCount = deck.cards?.[0]?.count ?? 0
+                const author = deck.author_name || '匿名'
+
                 return `
                     <div class="deck-item">
                         <a href="${target}">${deck.title}</a>
+                        <div class="deck-meta">
+                            作者：${author} · ${cardCount} 张卡片
+                        </div>
                     </div>
                 `
             }).join('')
