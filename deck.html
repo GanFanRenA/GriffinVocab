@@ -13,6 +13,7 @@
     
     <div id="deck-actions" style="display:none;">
         <button id="edit-deck-btn">编辑标题</button>
+        <button id="toggle-shuffle-btn">切换打乱设置</button>
         <button id="delete-deck-btn">删除词卡集</button>
     </div>
 
@@ -55,6 +56,10 @@
 
         let currentUser = null
         let deckOwnerId = null
+        let deckShuffle = false
+
+        // 在加载 deck 数据后
+        deckShuffle = deck.shuffle ?? false
 
         async function init() {
             const { data: { session } } = await supabase.auth.getSession()
@@ -107,6 +112,32 @@
                 return
             }
             deckTitleEl.textContent = newTitle
+        })
+
+        // 显示当前打乱设置
+        function updateShuffleBtn() {
+            const btn = document.getElementById('toggle-shuffle-btn')
+            if (btn) {
+                btn.textContent = deckShuffle ? '打乱：开' : '打乱：关'
+            }
+        }
+
+        // 切换
+        document.getElementById('toggle-shuffle-btn')?.addEventListener('click', async () => {
+            const newValue = !deckShuffle
+
+            const { error } = await supabase
+                .from('decks')
+                .update({ shuffle: newValue })
+                .eq('id', deckId)
+
+            if (error) {
+                alert('修改失败：' + error.message)
+                return
+            }
+
+            deckShuffle = newValue
+            updateShuffleBtn()
         })
 
         // 删除词卡集

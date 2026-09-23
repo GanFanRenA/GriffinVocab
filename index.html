@@ -19,6 +19,9 @@
         <h2>创建词卡集</h2>
         <form id="create-deck-form">
             <input type="text" id="deck-title" placeholder="词卡集标题，如：水果词汇" required>
+            <label>
+                <input type="checkbox" id="deck-shuffle"> 学习时随机打乱
+            </label>
             <button type="submit">创建</button>
         </form>
         <p id="create-message"></p>
@@ -60,7 +63,11 @@
 
             const { error } = await supabase
                 .from('decks')
-                .insert({ title: deckTitle.value, user_id: currentUser.id })
+                .insert({
+                    title: deckTitle.value,
+                    user_id: currentUser.id,
+                    shuffle: document.getElementById('deck-shuffle').checked
+                })
 
             if (error) {
                 createMessage.textContent = '出错了：' + error.message

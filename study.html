@@ -59,6 +59,7 @@
         let knownCount = 0
         let unknownCount = 0
         let unknownCards = []    // 本轮标记“不会”的卡片
+        let deckShuffle = false
 
         backLink.href = `deck.html?id=${deckId}`
 
@@ -69,11 +70,14 @@
 
             const { data: deck } = await supabase
                 .from('decks')
-                .select('title, user_id')
+                .select('title, user_id, shuffle')
                 .eq('id', deckId)
                 .single()
 
-            if (deck) deckTitleEl.textContent = deck.title
+            if (deck) {
+                deckTitleEl.textContent = deck.title
+                deckShuffle = deck.shuffle ?? false
+            }
 
             // 非创建者返回首页，创建者返回词卡集详情
             if (!currentUser || currentUser.id !== deck.user_id) {
@@ -105,6 +109,14 @@
         // 开始一轮学习，传入这一轮要过的卡片数组
         function startRound(cardList) {
             cards = [...cardList]
+
+            if (deckShuffle) {
+                for (let i = cards.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1))
+                    ;[cards[i], cards[j]] = [cards[j], cards[i]]
+                }
+            }
+
             currentIndex = 0
             knownCount = 0
             unknownCount = 0
