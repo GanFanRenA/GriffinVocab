@@ -30,12 +30,10 @@
 
     <script type="module">
         
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+        import { supabase, requireLogin } from './script.js'
 
-        const supabase = createClient(
-            'https://hjlnubicstqnlappbrjc.supabase.co',
-            'sb_publishable_oyxAGzlhR4oXmhH8rrs0rw_uHMbzsVx'
-        )
+        const currentUser = await requireLogin()
+        if (!currentUser) throw new Error('未登录，正在跳转')
 
         const params = new URLSearchParams(window.location.search)
         const deckId = params.get('id')
@@ -79,8 +77,7 @@
                 deckShuffle = deck.shuffle ?? false
             }
 
-            // 非创建者返回首页，创建者返回词卡集详情
-            if (!currentUser || currentUser.id !== deck.user_id) {
+            if (currentUser.id !== deck?.user_id) {
                 backLink.href = 'index.html'
                 backLink.textContent = '← 返回首页'
             } else {

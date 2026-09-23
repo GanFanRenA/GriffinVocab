@@ -36,12 +36,10 @@
 
     <script type="module">
         
-        import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
+        import { supabase, requireLogin } from './script.js'
 
-        const supabase = createClient(
-            'https://hjlnubicstqnlappbrjc.supabase.co',
-            'sb_publishable_oyxAGzlhR4oXmhH8rrs0rw_uHMbzsVx'
-        )
+        const currentUser = await requireLogin()
+        if (!currentUser) throw new Error('未登录，正在跳转')
 
         const params = new URLSearchParams(window.location.search)
         const deckId = params.get('id')
@@ -54,17 +52,10 @@
         const cardMessage = document.getElementById('card-message')
         const cardsList = document.getElementById('cards-list')
 
-        let currentUser = null
         let deckOwnerId = null
         let deckShuffle = false
 
-        // 在加载 deck 数据后
-        deckShuffle = deck.shuffle ?? false
-
         async function init() {
-            const { data: { session } } = await supabase.auth.getSession()
-            currentUser = session?.user ?? null
-
             // 加载词卡集信息
             const { data: deck, error: deckError } = await supabase
                 .from('decks')
@@ -79,22 +70,14 @@
 
             deckOwnerId = deck.user_id
             deckTitleEl.textContent = deck.title
+            deckShuffle = deck.shuffle ?? false
 
-            // 非创建者直接进入学习模式，不看列表
-            if (!currentUser || currentUser.id !== deckOwnerId) {
-                window.location.href = `study.html?id=${deckId}`
-                return
-            }
+            updateShuffleBtn()
 
-            // 创建者才显示添加表单和列表
+            document.getElementById('study-link').href = `study.html?id=${deckId}`
             addCardSection.style.display = 'block'
+            document.getElementById('deck-actions').style.display = 'block'
             loadCards()
-        }
-
-        // 显示操作按钮（仅创建者）
-        if (currentUser && currentUser.id === deckOwnerId) {
-            addCardSection.style.display = 'block'
-            deckActions.style.display = 'block'
         }
 
         // 编辑词卡集标题

@@ -96,11 +96,18 @@
                 return
             }
 
-            decksList.innerHTML = data.map(deck => `
-                <div class="deck-item">
-                    <a href="deck.html?id=${deck.id}">${deck.title}</a>
-                </div>
-            `).join('')
+            decksList.innerHTML = data.map(deck => {
+                const isOwner = deck.user_id === currentUser.id
+                const target = isOwner
+                    ? `deck.html?id=${deck.id}`
+                    : `study.html?id=${deck.id}`
+
+                return `
+                    <div class="deck-item">
+                        <a href="${target}">${deck.title}</a>
+                    </div>
+                `
+            }).join('')
         }
 
         loadDecks()
