@@ -11,6 +11,8 @@
 
     <h1 id="deck-title">加载中...</h1>
 
+    <button id="favorite-btn">收藏</button>
+
     <div id="study-area" style="display:none;">
         <p id="progress"></p>
 
@@ -49,6 +51,7 @@
         const knowBtn = document.getElementById('know-btn')
         const dontKnowBtn = document.getElementById('dont-know-btn')
         const doneMessage = document.getElementById('done-message')
+        const favoriteBtn = document.getElementById('favorite-btn')
 
         let allCards = []        // 词卡集里的全部卡片（不变）
         let cards = []           // 当前这一轮要过的卡片
@@ -58,19 +61,22 @@
         let unknownCount = 0
         let unknownCards = []    // 本轮标记“不会”的卡片
         let deckShuffle = false
+        let isFavorite = false
 
         backLink.href = `deck.html?id=${deckId}`
 
         async function init() {
-            // 判断当前用户是不是创建者
-            const { data: { session } } = await supabase.auth.getSession()
-            const currentUser = session?.user ?? null
+            // deck、cards、收藏状态三者互不依赖，可以并行
+            const [deckResult, cardsResult, recordResult] = await Promise.all([
+                supabase.from('decks').select('title, user_id, shuffle').eq('id', deckId).single(),
+                supabase.from('cards').select('*').eq('deck_id', deckId),
+                supabase.from('learning_records').select('status').eq('user_id', currentUser.id).eq('deck_id', deckId).maybeSingle()
+            ])
 
-            const { data: deck } = await supabase
-                .from('decks')
-                .select('title, user_id, shuffle')
-                .eq('id', deckId)
-                .single()
+            const deck = deckResult.data
+            const cardsData = cardsResult.data
+            const cardsError = cardsResult.error
+            const record = recordResult.data
 
             if (deck) {
                 deckTitleEl.textContent = deck.title
@@ -84,22 +90,30 @@
                 backLink.href = `deck.html?id=${deckId}`
             }
 
-            const { data, error } = await supabase
-                .from('cards')
-                .select('*')
-                .eq('deck_id', deckId)
-
-            if (error) {
-                deckTitleEl.textContent = '加载失败：' + error.message
+            if (cardsError) {
+                deckTitleEl.textContent = '加载失败：' + cardsError.message
                 return
             }
 
-            if (!data || data.length === 0) {
+            if (!cardsData || cardsData.length === 0) {
                 deckTitleEl.textContent = '这个词卡集还没有单词卡'
                 return
             }
 
-            allCards = data
+            allCards = cardsData
+
+            isFavorite = record?.status === 'favorite'
+            updateFavoriteBtn()
+
+            // “记录学过”不阻塞学习，放最后，不用 await
+            supabase
+                .from('learning_records')
+                .upsert({
+                    user_id: currentUser.id,
+                    deck_id: deckId,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id,deck_id' })
+
             startRound(allCards)
         }
 
@@ -145,6 +159,31 @@
                 answerButtons.style.display = 'none'
                 showingFront = true
             }
+        })
+
+        function updateFavoriteBtn() {
+            favoriteBtn.textContent = isFavorite ? '已收藏' : '收藏'
+        }
+
+        favoriteBtn.addEventListener('click', async () => {
+            const newStatus = isFavorite ? 'learning' : 'favorite'
+
+            const { error } = await supabase
+                .from('learning_records')
+                .upsert({
+                    user_id: currentUser.id,
+                    deck_id: deckId,
+                    status: newStatus,
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'user_id,deck_id' })
+
+            if (error) {
+                alert('操作失败：' + error.message)
+                return
+            }
+
+            isFavorite = !isFavorite
+            updateFavoriteBtn()
         })
 
         function nextCard(known) {

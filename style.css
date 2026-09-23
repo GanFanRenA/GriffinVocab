@@ -124,3 +124,36 @@ header {
     border-radius: 6px;
     font-size: 15px;
 }
+
+.deck-meta a {
+    color: #2c3e50;
+    text-decoration: none;
+}
+
+.deck-meta a:hover {
+    text-decoration: underline;
+}
+
+#deck-count {
+    color: #888;
+    font-size: 14px;
+}
+
+#tabs {
+    margin-bottom: 16px;
+}
+
+#tabs button {
+    background: #eee;
+    color: #333;
+    margin-right: 8px;
+}
+
+#tabs button.active {
+    background: #2c3e50;
+    color: white;
+}
+
+#favorite-btn {
+    margin-bottom: 12px;
+}

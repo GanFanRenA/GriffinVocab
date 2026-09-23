@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>我的学习</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <p><a href="index.html">← 返回首页</a></p>
+
+    <h1>我的学习</h1>
+
+    <div id="tabs">
+        <button id="tab-all" class="active">全部</button>
+        <button id="tab-learning">学过</button>
+        <button id="tab-favorite">收藏</button>
+    </div>
+
+    <div id="records-list">加载中...</div>
+
+    <script type="module">
+        import { supabase, requireLogin } from './script.js'
+
+        const currentUser = await requireLogin()
+        if (!currentUser) throw new Error('未登录，正在跳转')
+
+        const recordsList = document.getElementById('records-list')
+        const tabAll = document.getElementById('tab-all')
+        const tabLearning = document.getElementById('tab-learning')
+        const tabFavorite = document.getElementById('tab-favorite')
+
+        let allRecords = []
+        let currentFilter = 'all'
+
+        async function init() {
+            const { data, error } = await supabase
+                .from('learning_records')
+                .select('*, decks(title, user_id, profiles(username))')
+                .eq('user_id', currentUser.id)
+                .order('updated_at', { ascending: false })
+
+            if (error) {
+                recordsList.textContent = '加载失败：' + error.message
+                return
+            }
+
+            allRecords = data
+            render()
+        }
+
+        function render() {
+            let records = allRecords
+
+            if (currentFilter === 'learning') {
+                records = allRecords.filter(r => r.status === 'learning')
+            } else if (currentFilter === 'favorite') {
+                records = allRecords.filter(r => r.status === 'favorite')
+            }
+
+            if (records.length === 0) {
+                recordsList.textContent = '还没有学习记录。'
+                return
+            }
+
+            recordsList.innerHTML = records.map(record => {
+                const deck = record.decks
+                if (!deck) return ''
+
+                const isOwner = deck.user_id === currentUser.id
+                const target = isOwner
+                    ? `deck.html?id=${record.deck_id}`
+                    : `study.html?id=${record.deck_id}`
+
+                const author = deck.profiles?.username || '匿名'
+                const statusLabel = record.status === 'favorite' ? '已收藏' : '学过'
+                const date = new Date(record.updated_at).toLocaleDateString('zh-CN')
+
+                return `
+                    <div class="deck-item">
+                        <a href="${target}">${deck.title}</a>
+                        <div class="deck-meta">
+                            ${statusLabel} · 作者：${author} · ${date}
+                        </div>
+                    </div>
+                `
+            }).join('')
+        }
+
+        // tab 切换
+        tabAll.addEventListener('click', () => {
+            currentFilter = 'all'
+            setActiveTab(tabAll)
+            render()
+        })
+
+        tabLearning.addEventListener('click', () => {
+            currentFilter = 'learning'
+            setActiveTab(tabLearning)
+            render()
+        })
+
+        tabFavorite.addEventListener('click', () => {
+            currentFilter = 'favorite'
+            setActiveTab(tabFavorite)
+            render()
+        })
+
+        function setActiveTab(activeBtn) {
+            [tabAll, tabLearning, tabFavorite].forEach(btn => btn.classList.remove('active'))
+            activeBtn.classList.add('active')
+        }
+
+        init()
+    </script>
+</body>
+</html>

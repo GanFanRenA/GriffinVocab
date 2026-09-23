@@ -11,7 +11,13 @@
         <h1>词卡教学网站</h1>
         <div id="user-area">
             <span id="user-email"></span>
-            <button id="logout-btn">登出</button>
+            <div id="user-area">
+                <a id="my-profile-link" href="#">我的词卡集</a>
+                <span id="user-email"></span>
+                <a href="my-learning.html">我的学习</a>
+                <a href="settings.html">设置</a>
+                <button id="logout-btn">登出</button>
+            </div>
         </div>
     </header>
 
@@ -19,9 +25,6 @@
         <h2>创建词卡集</h2>
         <form id="create-deck-form">
             <input type="text" id="deck-title" placeholder="词卡集标题，如：水果词汇" required>
-            <label>
-                <input type="checkbox" id="deck-shuffle"> 学习时随机打乱
-            </label>
             <button type="submit">创建</button>
         </form>
         <p id="create-message"></p>
@@ -67,8 +70,7 @@
                 .insert({
                     title: deckTitle.value,
                     user_id: currentUser.id,
-                    shuffle: document.getElementById('deck-shuffle').checked,
-                    author_name: currentUser.email.split('@')[0]
+                    shuffle: false
                 })
 
             if (error) {
@@ -81,6 +83,8 @@
             loadDecks()
         })
 
+        document.getElementById('my-profile-link').href = `profile.html?user=${currentUser.id}`
+
         document.getElementById('search-input').addEventListener('input', (e) => {
             const keyword = e.target.value.trim().toLowerCase()
 
@@ -91,7 +95,7 @@
 
             const filtered = allDecks.filter(deck => {
                 const title = (deck.title || '').toLowerCase()
-                const author = (deck.author_name || '').toLowerCase()
+                const author = (deck.profiles?.username || '').toLowerCase()
                 return title.includes(keyword) || author.includes(keyword)
             })
 
@@ -103,7 +107,7 @@
         async function loadDecks() {
             const { data, error } = await supabase
                 .from('decks')
-                .select('*, cards(count)')
+                .select('*, cards(count), profiles(username)')
                 .order('created_at', { ascending: false })
 
             if (error) {
@@ -128,13 +132,13 @@
                     : `study.html?id=${deck.id}`
 
                 const cardCount = deck.cards?.[0]?.count ?? 0
-                const author = deck.author_name || '匿名'
+                const author = deck.profiles?.username || '匿名'
 
                 return `
                     <div class="deck-item">
                         <a href="${target}">${deck.title}</a>
                         <div class="deck-meta">
-                            作者：${author} · ${cardCount} 张卡片
+                            作者：<a href="profile.html?user=${deck.user_id}">${author}</a> · ${cardCount} 张卡片
                         </div>
                     </div>
                 `

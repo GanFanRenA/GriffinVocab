@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>个人主页</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <p><a href="index.html">← 返回首页</a></p>
+
+    <h1 id="author-name">加载中...</h1>
+    <p id="join-date"></p>
+    <p id="deck-count"></p>
+
+    <div id="decks-list">加载中...</div>
+
+    <script type="module">
+        import { supabase, requireLogin } from './script.js'
+
+        const currentUser = await requireLogin()
+        if (!currentUser) throw new Error('未登录，正在跳转')
+
+        const params = new URLSearchParams(window.location.search)
+        const userId = params.get('user')
+
+        const authorNameEl = document.getElementById('author-name')
+        const deckCountEl = document.getElementById('deck-count')
+        const decksList = document.getElementById('decks-list')
+
+        async function init() {
+            if (!userId) {
+                authorNameEl.textContent = '未指定用户'
+                deckCountEl.textContent = ''
+                decksList.textContent = ''
+                return
+            }
+
+            // 查用户名和注册时间
+            const { data: profile } = await supabase
+                .from('profiles')
+                .select('username, created_at')
+                .eq('id', userId)
+                .single()
+
+            if (profile) {
+                authorNameEl.textContent = profile.username
+                const joinDate = new Date(profile.created_at).toLocaleDateString('zh-CN')
+                document.getElementById('join-date').textContent = `注册于 ${joinDate}`
+            } else {
+                authorNameEl.textContent = '未知用户'
+                document.getElementById('join-date').textContent = ''
+            }
+
+            // 查该用户的词卡集
+            const { data, error } = await supabase
+                .from('decks')
+                .select('*, cards(count)')
+                .eq('user_id', userId)
+                .order('created_at', { ascending: false })
+
+            if (error) {
+                decksList.textContent = '加载失败：' + error.message
+                return
+            }
+
+            if (data.length === 0) {
+                deckCountEl.textContent = '还没有创建词卡集'
+                decksList.textContent = ''
+                return
+            }
+
+            let totalCards = 0
+            data.forEach(deck => {
+                totalCards += deck.cards?.[0]?.count ?? 0
+            })
+
+            deckCountEl.textContent = `共 ${data.length} 个词卡集 · ${totalCards} 张卡片`
+
+            decksList.innerHTML = data.map(deck => {
+                const isOwner = deck.user_id === currentUser.id
+                const target = isOwner
+                    ? `deck.html?id=${deck.id}`
+                    : `study.html?id=${deck.id}`
+
+                const cardCount = deck.cards?.[0]?.count ?? 0
+
+                return `
+                    <div class="deck-item">
+                        <a href="${target}">${deck.title}</a>
+                        <div class="deck-meta">${cardCount} 张卡片</div>
+                    </div>
+                `
+            }).join('')
+        }
+
+        init()
+    </script>
+</body>
+</html>

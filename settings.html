@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>账号设置</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <p><a href="index.html">← 返回首页</a></p>
+
+    <h1>账号设置</h1>
+
+    <form id="username-form">
+        <label>显示名</label>
+        <input type="text" id="username" required>
+        <button type="submit">保存</button>
+    </form>
+    <p id="message"></p>
+
+    <script type="module">
+        import { supabase, requireLogin } from './script.js'
+
+        const currentUser = await requireLogin()
+        if (!currentUser) throw new Error('未登录，正在跳转')
+
+        const form = document.getElementById('username-form')
+        const usernameInput = document.getElementById('username')
+        const message = document.getElementById('message')
+
+        // 加载当前用户名
+        const { data: profile } = await supabase
+            .from('profiles')
+            .select('username')
+            .eq('id', currentUser.id)
+            .single()
+
+        if (profile) usernameInput.value = profile.username
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault()
+            message.textContent = '保存中...'
+
+            const newName = usernameInput.value.trim()
+            if (!newName) {
+                message.textContent = '名称不能为空'
+                return
+            }
+
+            const { error } = await supabase
+                .from('profiles')
+                .update({ username: newName })
+                .eq('id', currentUser.id)
+
+            if (error) {
+                if (error.code === '23505') {
+                    message.textContent = '这个名字已经被占用了'
+                } else {
+                    message.textContent = '保存失败：' + error.message
+                }
+                return
+            }
+
+            message.textContent = '保存成功'
+        })
+    </script>
+</body>
+</html>
