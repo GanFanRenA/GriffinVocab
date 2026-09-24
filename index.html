@@ -119,7 +119,7 @@
             e.preventDefault()
             createMessage.textContent = '创建中...'
 
-            const { error } = await supabase
+            const { data, error } = await supabase
                 .from('decks')
                 .insert({
                     title: deckTitle.value,
@@ -128,15 +128,16 @@
                     unit: unitInput.value,
                     shuffle: false
                 })
+                .select('id')
+                .single()
 
             if (error) {
                 createMessage.textContent = '出错了：' + error.message
                 return
             }
 
-            createMessage.textContent = '创建成功'
-            deckTitle.value = ''
-            loadDecks()
+            createMessage.textContent = '创建成功，正在跳转到编辑页面...'
+            window.location.href = `deck.html?id=${data.id}`
         })
 
         document.getElementById('my-profile-link').href = `profile.html?user=${currentUser.id}`

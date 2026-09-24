@@ -1,159 +1,808 @@
-body {
-    font-family: system-ui, -apple-system, sans-serif;
-    max-width: 700px;
-    margin: 40px auto;
-    padding: 0 20px;
-    color: #222;
+/* ========================================================
+   GriffinVocab — 全局样式
+   ======================================================== */
+
+:root {
+    --primary:       #4f46e5;
+    --primary-dark:  #4338ca;
+    --primary-light: #eef2ff;
+
+    --bg:            #f6f7fb;
+    --card-bg:       #ffffff;
+    --border:        #e5e7eb;
+    --border-hover:  #cbd5e1;
+
+    --text:          #1e293b;
+    --text-muted:    #64748b;
+
+    --danger:        #dc2626;
+    --danger-light:  #fef2f2;
+    --danger-border: #fecaca;
+
+    --success:       #16a34a;
+    --success-dark:  #15803d;
+    --warn:          #f59e0b;
+    --warn-dark:     #d97706;
+
+    --radius:        14px;
+    --radius-sm:     9px;
+    --radius-full:   999px;
+
+    --shadow:    0 1px 3px rgba(15,23,42,.07), 0 1px 2px rgba(15,23,42,.04);
+    --shadow-md: 0 4px 14px rgba(15,23,42,.09);
+    --shadow-lg: 0 12px 32px rgba(15,23,42,.12);
+
+    --transition: .18s ease;
 }
+
+* { box-sizing: border-box; }
+
+html { background: var(--bg); color-scheme: light; }
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+                 "Hiragino Sans GB", "Microsoft YaHei", system-ui, sans-serif;
+    max-width: 700px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+    color: var(--text);
+    background: var(--bg);
+    line-height: 1.65;
+    font-size: 15px;
+    -webkit-font-smoothing: antialiased;
+}
+
+
+/* ========================================================
+   标题
+   ======================================================== */
 
 h1 {
-    color: #2c3e50;
+    color: var(--text);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    margin: 0 0 20px;
+    line-height: 1.3;
 }
 
-input {
+h2 {
+    color: var(--text);
+    font-size: 19px;
+    font-weight: 650;
+    letter-spacing: -.01em;
+    margin: 30px 0 14px;
+}
+
+h3 {
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: .03em;
+    margin: 20px 0 8px;
+}
+
+
+/* ========================================================
+   链接
+   ======================================================== */
+
+a {
+    color: var(--primary);
+    text-decoration: none;
+    transition: color var(--transition);
+}
+
+a:hover {
+    color: var(--primary-dark);
+    text-decoration: underline;
+}
+
+/* 页面顶部的「← 返回」链接（独占一个段落时） */
+p > a:only-child {
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    transition: color var(--transition), transform var(--transition);
+    display: inline-block;
+}
+
+p > a:only-child:hover {
+    color: var(--primary);
+    text-decoration: none;
+    transform: translateX(-3px);
+}
+
+
+/* ========================================================
+   表单控件
+   ======================================================== */
+
+input, select {
     display: block;
     width: 100%;
-    padding: 10px;
+    padding: 11px 14px;
     margin: 8px 0;
-    border: 1px solid #ccc;
-    border-radius: 6px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
     font-size: 16px;
+    font-family: inherit;
+    color: var(--text);
+    background: var(--card-bg);
+    transition: border-color var(--transition), box-shadow var(--transition);
 }
+
+input::placeholder {
+    color: #9ca3af;
+}
+
+input:focus, select:focus {
+    outline: none;
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, .15);
+}
+
+select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 40px;
+}
+
+label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+}
+
+
+/* ========================================================
+   按钮
+   ======================================================== */
 
 button {
     padding: 10px 20px;
-    background: #2c3e50;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 16px;
+    background: var(--primary);
+    color: #fff;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-family: inherit;
+    font-weight: 500;
     cursor: pointer;
+    transition: background var(--transition),
+                border-color var(--transition),
+                color var(--transition),
+                box-shadow var(--transition),
+                transform var(--transition);
 }
 
 button:hover {
-    background: #1a252f;
+    background: var(--primary-dark);
+    box-shadow: var(--shadow-md);
 }
 
-#message {
-    color: #c0392b;
+button:active {
+    transform: translateY(1px);
 }
+
+button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, .3);
+}
+
+
+/* ========================================================
+   提示信息
+   ======================================================== */
+
+#message,
+#card-message,
+#create-message {
+    color: var(--danger);
+    font-size: 14px;
+    margin: 10px 0 0;
+    min-height: 1px;
+}
+
+
+/* ========================================================
+   顶部 header（首页）
+   ======================================================== */
 
 header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
+    flex-wrap: wrap;
+    gap: 12px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 16px;
+    margin-bottom: 12px;
 }
 
-.deck-item, .card-item {
-    padding: 12px;
-    border: 1px solid #eee;
-    border-radius: 8px;
-    margin: 8px 0;
+header h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 700;
+}
+
+#user-area {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+#user-email {
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+#user-area a {
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: 14px;
+}
+
+#user-area a:hover {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+#logout-btn {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 6px 14px;
+    font-size: 13px;
+    border-radius: var(--radius-full);
+    box-shadow: none;
+}
+
+#logout-btn:hover {
+    background: var(--primary-light);
+    color: var(--primary);
+    border-color: var(--primary);
+    box-shadow: none;
+}
+
+
+/* ========================================================
+   卡片容器（创建区 / 添加卡片区 / 登录区）
+   ======================================================== */
+
+#create-section,
+#add-card-section,
+#auth-section {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+    box-shadow: var(--shadow);
+    margin: 22px 0;
+}
+
+#create-section h2,
+#add-card-section h2 {
+    margin-top: 0;
+    margin-bottom: 14px;
+}
+
+#auth-section {
+    max-width: 420px;
+    margin: 28px auto;
+    padding: 32px 28px;
+    box-shadow: var(--shadow-lg);
+}
+
+#auth-title {
+    margin: 0 0 20px;
+    text-align: center;
+    font-size: 22px;
+}
+
+#auth-section > p {
+    text-align: center;
+    font-size: 14px;
+    margin: 14px 0 0;
+}
+
+#toggle-link {
+    font-weight: 600;
+}
+
+
+/* ========================================================
+   单元建议标签
+   ======================================================== */
+
+#unit-suggestions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0 4px;
+}
+
+.unit-tag {
+    display: inline-block;
+    padding: 5px 14px;
+    background: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid transparent;
+    border-radius: var(--radius-full);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background var(--transition), color var(--transition),
+                border-color var(--transition);
+}
+
+.unit-tag:hover {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+}
+
+
+/* ========================================================
+   搜索框
+   ======================================================== */
+
+#search-input {
+    width: 100%;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    font-size: 15px;
+    background: var(--card-bg);
+}
+
+
+/* ========================================================
+   词卡集 / 单词卡 列表项
+   ======================================================== */
+
+.deck-item,
+.card-item {
+    padding: 16px 18px;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    margin: 10px 0;
+    box-shadow: var(--shadow);
+    transition: box-shadow var(--transition),
+                border-color var(--transition),
+                transform var(--transition);
+}
+
+.deck-item:hover,
+.card-item:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--border-hover);
+    transform: translateY(-1px);
 }
 
 .deck-item a {
     text-decoration: none;
-    color: #2c3e50;
-    font-weight: bold;
-}
-.flashcard {
-    min-height: 200px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: #f8f9fa;
-    border: 2px solid #2c3e50;
-    border-radius: 12px;
-    font-size: 28px;
-    cursor: pointer;
-    user-select: none;
-    padding: 20px;
-    text-align: center;
+    color: var(--text);
+    font-weight: 600;
+    font-size: 16px;
 }
 
-.flashcard:hover {
-    background: #eef1f4;
-}
-
-#answer-buttons button {
-    margin-right: 10px;
-}
-
-#progress {
-    color: #888;
-}
-
-#hint {
-    color: #888;
-    font-size: 14px;
-}
-
-.card-actions {
-    margin-top: 8px;
-}
-
-.card-actions button {
-    font-size: 12px;
-    padding: 4px 10px;
-    margin-right: 6px;
-    background: #eee;
-    color: #333;
-}
-
-#deck-actions {
-    margin: 10px 0;
-}
-
-#deck-actions button {
-    margin-right: 8px;
+.deck-item a:hover {
+    color: var(--primary);
+    text-decoration: none;
 }
 
 .deck-meta {
     font-size: 13px;
-    color: #888;
-    margin-top: 4px;
-}
-
-#search-input {
-    width: 100%;
-    padding: 10px;
-    margin-bottom: 16px;
-    border: 1px solid #ccc;
-    border-radius: 6px;
-    font-size: 15px;
+    color: var(--text-muted);
+    margin-top: 6px;
+    line-height: 1.5;
 }
 
 .deck-meta a {
-    color: #2c3e50;
+    color: var(--text-muted);
+    font-weight: 500;
+    font-size: inherit;
     text-decoration: none;
 }
 
 .deck-meta a:hover {
+    color: var(--primary);
     text-decoration: underline;
 }
 
-#deck-count {
-    color: #888;
+/* 首页按 学科 → 单元 分组 */
+#decks-list h2 {
+    margin: 26px 0 10px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--primary-light);
+    font-size: 18px;
+}
+
+#decks-list h3 {
+    margin: 18px 0 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+    font-weight: 600;
+    letter-spacing: .04em;
+}
+
+#decks-list > h2:first-child {
+    margin-top: 12px;
+}
+
+
+/* ========================================================
+   单词卡操作按钮（编辑 / 删除）
+   ======================================================== */
+
+.card-actions {
+    margin-top: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.card-actions button {
+    font-size: 12px;
+    padding: 5px 14px;
+    margin-right: 0;
+    background: var(--primary-light);
+    color: var(--primary);
+    border: 1px solid transparent;
+    border-radius: 7px;
+    box-shadow: none;
+}
+
+.card-actions button:hover {
+    background: var(--primary);
+    color: #fff;
+    box-shadow: none;
+}
+
+.card-actions .delete-card-btn {
+    background: var(--danger-light);
+    color: var(--danger);
+}
+
+.card-actions .delete-card-btn:hover {
+    background: var(--danger);
+    color: #fff;
+}
+
+
+/* ========================================================
+   词卡集详情页 —— 管理区
+   ======================================================== */
+
+#deck-actions {
+    margin: 16px 0;
+}
+
+#deck-subject-unit {
+    color: var(--text-muted);
     font-size: 14px;
+    margin: 0 0 12px;
 }
 
-#tabs {
-    margin-bottom: 16px;
-}
-
-#tabs button {
-    background: #eee;
-    color: #333;
+#deck-actions button {
     margin-right: 8px;
+    margin-bottom: 8px;
+    font-size: 14px;
+    padding: 8px 16px;
 }
 
-#tabs button.active {
-    background: #2c3e50;
-    color: white;
+#edit-deck-btn,
+#toggle-shuffle-btn {
+    background: var(--card-bg);
+    color: var(--text);
+    border: 1px solid var(--border);
+    box-shadow: none;
+}
+
+#edit-deck-btn:hover,
+#toggle-shuffle-btn:hover {
+    background: var(--primary-light);
+    color: var(--primary);
+    border-color: var(--primary);
+    box-shadow: none;
+}
+
+#delete-deck-btn,
+.card-actions .delete-card-btn {
+    background: var(--danger-light);
+    color: var(--danger);
+    border: 1px solid var(--danger-border);
+    box-shadow: none;
+}
+
+#delete-deck-btn:hover,
+.card-actions .delete-card-btn:hover {
+    background: var(--danger);
+    color: #fff;
+    border-color: var(--danger);
+    box-shadow: none;
+}
+
+/* 「开始学习 →」链接按钮 */
+#study-link {
+    display: inline-block;
+    background: var(--primary);
+    color: #fff;
+    padding: 11px 26px;
+    border-radius: var(--radius-sm);
+    font-size: 15px;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: var(--shadow);
+    transition: background var(--transition),
+                box-shadow var(--transition),
+                transform var(--transition);
+}
+
+#study-link:hover {
+    background: var(--primary-dark);
+    color: #fff;
+    text-decoration: none;
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
+}
+
+
+/* ========================================================
+   学习模式
+   ======================================================== */
+
+#deck-title {
+    margin-bottom: 14px;
 }
 
 #favorite-btn {
-    margin-bottom: 12px;
+    margin-bottom: 18px;
+    background: var(--card-bg);
+    color: var(--primary);
+    border: 1px solid var(--border);
+    font-size: 14px;
+    padding: 8px 20px;
+    border-radius: var(--radius-full);
+    box-shadow: none;
+}
+
+#favorite-btn:hover {
+    background: var(--primary-light);
+    border-color: var(--primary);
+    box-shadow: none;
+}
+
+#progress {
+    color: var(--text-muted);
+    font-size: 14px;
+    font-weight: 600;
+    text-align: center;
+    margin: 0 0 6px;
+    letter-spacing: .02em;
+}
+
+.flashcard {
+    min-height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--card-bg);
+    border: 2px solid var(--border);
+    border-radius: 18px;
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.4;
+    cursor: pointer;
+    user-select: none;
+    padding: 32px 24px;
+    text-align: center;
+    box-shadow: var(--shadow);
+    margin: 18px 0;
+    transition: border-color var(--transition),
+                box-shadow var(--transition),
+                transform var(--transition);
+}
+
+.flashcard:hover {
+    border-color: var(--primary);
+    box-shadow: var(--shadow-lg);
+}
+
+.flashcard:active {
+    transform: scale(.995);
+}
+
+#card-text {
+    word-break: break-word;
+}
+
+#hint {
+    color: var(--text-muted);
+    font-size: 14px;
+    text-align: center;
+    margin: 4px 0 0;
+}
+
+#answer-buttons {
+    margin-top: 16px;
+    text-align: center;
+}
+
+#answer-buttons button {
+    margin: 0 6px 10px;
+    min-width: 110px;
+    font-weight: 600;
+}
+
+#know-btn {
+    background: var(--success);
+}
+
+#know-btn:hover {
+    background: var(--success-dark);
+}
+
+#dont-know-btn {
+    background: var(--warn);
+}
+
+#dont-know-btn:hover {
+    background: var(--warn-dark);
+}
+
+#done-message {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    box-shadow: var(--shadow);
+    text-align: center;
+    margin-top: 18px;
+}
+
+#done-message p {
+    font-size: 17px;
+    font-weight: 500;
+    margin: 0 0 20px;
+}
+
+#done-message button {
+    margin: 0 6px 10px;
+}
+
+#done-message a {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+#done-message a:hover {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+
+/* ========================================================
+   我的学习 —— tab 切换
+   ======================================================== */
+
+#tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+#tabs button {
+    background: var(--card-bg);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    padding: 8px 20px;
+    margin-right: 0;
+    font-size: 14px;
+    font-weight: 500;
+    border-radius: var(--radius-full);
+    box-shadow: none;
+}
+
+#tabs button:hover {
+    background: var(--primary-light);
+    color: var(--primary);
+    border-color: var(--primary);
+    box-shadow: none;
+}
+
+#tabs button.active {
+    background: var(--primary);
+    color: #fff;
+    border-color: var(--primary);
+    box-shadow: var(--shadow-md);
+}
+
+
+/* ========================================================
+   个人主页
+   ======================================================== */
+
+#author-name {
+    margin-bottom: 6px;
+}
+
+#join-date {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin: 0;
+}
+
+#deck-count {
+    color: var(--text-muted);
+    font-size: 14px;
+    margin: 6px 0 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+}
+
+
+/* ========================================================
+   账号设置
+   ======================================================== */
+
+#username-form {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px;
+    box-shadow: var(--shadow);
+    margin: 20px 0;
+}
+
+
+/* ========================================================
+   响应式
+   ======================================================== */
+
+@media (max-width: 520px) {
+    body {
+        padding: 20px 16px 60px;
+        font-size: 14.5px;
+    }
+
+    h1 { font-size: 23px; }
+    h2 { font-size: 17px; }
+
+    header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    #user-area { gap: 10px; }
+
+    .flashcard {
+        min-height: 180px;
+        font-size: 23px;
+        padding: 24px 18px;
+    }
+
+    #answer-buttons button {
+        min-width: 90px;
+    }
+
+    #auth-section {
+        padding: 24px 20px;
+    }
 }
