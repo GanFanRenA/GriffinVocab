@@ -380,7 +380,8 @@ header h1 {
     box-shadow: var(--shadow);
     transition: box-shadow var(--transition),
                 border-color var(--transition),
-                transform var(--transition);
+                transform var(--transition),
+                opacity var(--transition);
 }
 
 .deck-item:hover,
@@ -439,6 +440,52 @@ header h1 {
 
 #decks-list > h2:first-child {
     margin-top: 12px;
+}
+
+/* ---------- 拖动排序 ---------- */
+
+.card-item.dragging {
+    opacity: .45;
+    border-style: dashed;
+    border-color: var(--primary);
+    box-shadow: var(--shadow-lg);
+    transform: scale(1.01);
+}
+
+.card-main {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+}
+
+.card-text {
+    flex: 1;
+    word-break: break-word;
+}
+
+.drag-handle {
+    cursor: grab;
+    color: var(--text-muted);
+    font-size: 15px;
+    letter-spacing: -3px;
+    line-height: 1.6;
+    user-select: none;
+    opacity: .35;
+    flex-shrink: 0;
+    transition: opacity var(--transition), color var(--transition);
+}
+
+.card-item:hover .drag-handle {
+    opacity: 1;
+    color: var(--primary);
+}
+
+.drag-handle:active {
+    cursor: grabbing;
+}
+
+.card-item[draggable="true"] {
+    -webkit-user-drag: element;
 }
 
 

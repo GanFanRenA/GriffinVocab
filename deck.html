@@ -180,17 +180,29 @@
             loadCards()
         }
 
-        // 添加单词卡
+        // 添加单词卡（自动追加到末尾）
         addCardForm?.addEventListener('submit', async (e) => {
             e.preventDefault()
             cardMessage.textContent = '添加中...'
+
+            // 查出当前最大 position
+            const { data: lastCard } = await supabase
+                .from('cards')
+                .select('position')
+                .eq('deck_id', deckId)
+                .order('position', { ascending: false })
+                .limit(1)
+                .maybeSingle()
+
+            const newPosition = (lastCard?.position ?? -1) + 1
 
             const { error } = await supabase
                 .from('cards')
                 .insert({
                     deck_id: deckId,
                     front: cardFront.value,
-                    back: cardBack.value
+                    back: cardBack.value,
+                    position: newPosition
                 })
 
             if (error) {
@@ -204,14 +216,22 @@
             loadCards()
         })
 
-        // 加载单词卡
+        // HTML 转义，防止单词里的特殊字符破坏结构
+        function esc(s) {
+            return String(s).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;',
+                '"': '&quot;', "'": '&#39;'
+            }[c]))
+        }
+
+        // 加载单词卡（按 position 排序）
         async function loadCards() {
             const { data, error } = await supabase
                 .from('cards')
                 .select('*')
                 .eq('deck_id', deckId)
-                .order('front', { ascending: true })
-                
+                .order('position', { ascending: true })
+
             if (error) {
                 cardsList.textContent = '加载失败：' + error.message
                 return
@@ -223,8 +243,13 @@
             }
 
             cardsList.innerHTML = data.map(card => `
-                <div class="card-item" data-id="${card.id}">
-                    <strong>${card.front}</strong> → ${card.back}
+                <div class="card-item" draggable="true" data-id="${card.id}">
+                    <div class="card-main">
+                        <span class="drag-handle" title="拖动调整顺序">⋮⋮</span>
+                        <span class="card-text">
+                            <strong>${esc(card.front)}</strong> → ${esc(card.back)}
+                        </span>
+                    </div>
                     <div class="card-actions">
                         <button class="edit-card-btn" data-id="${card.id}">编辑</button>
                         <button class="delete-card-btn" data-id="${card.id}">删除</button>
@@ -239,6 +264,84 @@
             document.querySelectorAll('.delete-card-btn').forEach(btn => {
                 btn.addEventListener('click', () => deleteCard(btn.dataset.id))
             })
+        }
+
+        /* ==================== 拖拽排序 ==================== */
+
+        let draggedCardId = null
+        let orderDirty = false
+
+        // 拖动开始
+        cardsList.addEventListener('dragstart', (e) => {
+            const item = e.target.closest('.card-item')
+            if (!item) return
+            draggedCardId = item.dataset.id
+            orderDirty = true
+            item.classList.add('dragging')
+            e.dataTransfer.effectAllowed = 'move'
+            // Firefox 必须调用 setData 才会启动拖拽
+            e.dataTransfer.setData('text/plain', draggedCardId)
+        })
+
+        // 拖动经过：实时把被拖项移到鼠标位置对应的槽位
+        cardsList.addEventListener('dragover', (e) => {
+            e.preventDefault()
+            e.dataTransfer.dropEffect = 'move'
+
+            const dragging = cardsList.querySelector('.card-item.dragging')
+            if (!dragging) return
+
+            const after = getDragAfterElement(cardsList, e.clientY)
+            if (after == null) {
+                cardsList.appendChild(dragging)
+            } else if (after !== dragging) {
+                cardsList.insertBefore(dragging, after)
+            }
+        })
+
+        // 拖动结束：清理样式，写回数据库
+        cardsList.addEventListener('dragend', async () => {
+            const dragging = cardsList.querySelector('.card-item.dragging')
+            if (dragging) dragging.classList.remove('dragging')
+
+            if (orderDirty && draggedCardId) {
+                orderDirty = false
+                draggedCardId = null
+                await persistOrder()
+            }
+        })
+
+        // 找到鼠标 Y 坐标下方“最近的、非拖拽中”的元素
+        function getDragAfterElement(container, y) {
+            const items = [...container.querySelectorAll('.card-item:not(.dragging)')]
+            return items.reduce((closest, child) => {
+                const box = child.getBoundingClientRect()
+                const offset = y - box.top - box.height / 2
+                if (offset < 0 && offset > closest.offset) {
+                    return { offset, element: child }
+                }
+                return closest
+            }, { offset: Number.NEGATIVE_INFINITY, element: null }).element
+        }
+
+        // 把 DOM 中的顺序写回数据库
+        async function persistOrder() {
+            const items = [...cardsList.querySelectorAll('.card-item')]
+
+            const results = await Promise.all(
+                items.map((el, i) =>
+                    supabase
+                        .from('cards')
+                        .update({ position: i })
+                        .eq('id', el.dataset.id)
+                )
+            )
+
+            const failed = results.find(r => r.error)
+            if (failed) {
+                alert('保存顺序失败：' + failed.error.message)
+                loadCards() // 重新拉取，恢复服务端顺序
+            }
         }
 
         init()
