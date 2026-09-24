@@ -25,6 +25,12 @@
         <h2>创建词卡集</h2>
         <form id="create-deck-form">
             <input type="text" id="deck-title" placeholder="词卡集标题，如：水果词汇" required>
+            <select id="deck-subject" required>
+                <option value="">选择学科...</option>
+            </select>
+
+            <input type="text" id="deck-unit" placeholder="单元，如 Chapter 1" required>
+            <div id="unit-suggestions"></div>
             <button type="submit">创建</button>
         </form>
         <p id="create-message"></p>
@@ -51,9 +57,57 @@
         const deckTitle = document.getElementById('deck-title')
         const createMessage = document.getElementById('create-message')
         const decksList = document.getElementById('decks-list')
+        const subjectSelect = document.getElementById('deck-subject')
+        const unitInput = document.getElementById('deck-unit')
+        const unitSuggestions = document.getElementById('unit-suggestions')
+
+        const { data: subjects } = await supabase
+            .from('subjects')
+            .select('id, name')
+            .order('name')
+
+        if (subjects) {
+            subjects.forEach(s => {
+                const opt = document.createElement('option')
+                opt.value = s.id
+                opt.textContent = s.name
+                subjectSelect.appendChild(opt)
+            })
+        }
 
         userEmail.textContent = currentUser.email
         createSection.style.display = 'block'
+
+        subjectSelect.addEventListener('change', async () => {
+            const subjectId = subjectSelect.value
+            unitSuggestions.innerHTML = ''
+            unitInput.value = ''
+
+            if (!subjectId) return
+
+            const { data } = await supabase
+                .from('decks')
+                .select('unit')
+                .eq('subject_id', subjectId)
+
+            const uniqueUnits = [...new Set(data.map(d => d.unit).filter(Boolean))].sort()
+
+            // 默认填入第一个
+            if (uniqueUnits.length > 0) {
+                unitInput.value = uniqueUnits[0]
+            }
+
+            // 渲染建议标签
+            unitSuggestions.innerHTML = uniqueUnits.map(u =>
+                `<span class="unit-tag" data-unit="${u}">${u}</span>`
+            ).join('')
+
+            unitSuggestions.querySelectorAll('.unit-tag').forEach(tag => {
+                tag.addEventListener('click', () => {
+                    unitInput.value = tag.dataset.unit
+                })
+            })
+        })
 
         // 登出
         logoutBtn?.addEventListener('click', async () => {
@@ -70,6 +124,8 @@
                 .insert({
                     title: deckTitle.value,
                     user_id: currentUser.id,
+                    subject_id: subjectSelect.value,
+                    unit: unitInput.value,
                     shuffle: false
                 })
 
@@ -107,7 +163,7 @@
         async function loadDecks() {
             const { data, error } = await supabase
                 .from('decks')
-                .select('*, cards(count), profiles(username)')
+                .select('*, cards(count), profiles(username), subjects(name)')
                 .order('created_at', { ascending: false })
 
             if (error) {
@@ -125,24 +181,43 @@
                 return
             }
 
-            decksList.innerHTML = decks.map(deck => {
-                const isOwner = deck.user_id === currentUser.id
-                const target = isOwner
-                    ? `deck.html?id=${deck.id}`
-                    : `study.html?id=${deck.id}`
+            // 按学科 → 单元分组
+            const grouped = {}
+            decks.forEach(deck => {          // ← 注意：用参数 decks，不是 allDecks
+                const subject = deck.subjects?.name || '未分类'
+                const unit = deck.unit || '未分单元'
+                if (!grouped[subject]) grouped[subject] = {}
+                if (!grouped[subject][unit]) grouped[subject][unit] = []
+                grouped[subject][unit].push(deck)
+            })
 
-                const cardCount = deck.cards?.[0]?.count ?? 0
-                const author = deck.profiles?.username || '匿名'
+            let html = ''
+            Object.keys(grouped).sort().forEach(subject => {
+                html += `<h2>${subject}</h2>`
+                Object.keys(grouped[subject]).sort().forEach(unit => {
+                    html += `<h3>${unit}</h3>`
+                    grouped[subject][unit].forEach(deck => {
+                        const isOwner = deck.user_id === currentUser.id
+                        const target = isOwner
+                            ? `deck.html?id=${deck.id}`
+                            : `study.html?id=${deck.id}`
 
-                return `
-                    <div class="deck-item">
-                        <a href="${target}">${deck.title}</a>
-                        <div class="deck-meta">
-                            作者：<a href="profile.html?user=${deck.user_id}">${author}</a> · ${cardCount} 张卡片
-                        </div>
-                    </div>
-                `
-            }).join('')
+                        const cardCount = deck.cards?.[0]?.count ?? 0
+                        const author = deck.profiles?.username || '匿名'
+
+                        html += `
+                            <div class="deck-item">
+                                <a href="${target}">${deck.title}</a>
+                                <div class="deck-meta">
+                                    作者：<a href="profile.html?user=${deck.user_id}">${author}</a> · ${cardCount} 张卡片
+                                </div>
+                            </div>
+                        `
+                    })
+                })
+            })
+
+            decksList.innerHTML = html
         }
 
         loadDecks()

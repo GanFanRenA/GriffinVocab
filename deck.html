@@ -13,6 +13,7 @@
     
     <div id="deck-actions" style="display:none;">
         <button id="edit-deck-btn">编辑标题</button>
+        <p id="deck-subject-unit"></p>
         <button id="toggle-shuffle-btn">切换打乱设置</button>
         <button id="delete-deck-btn">删除词卡集</button>
     </div>
@@ -54,17 +55,22 @@
 
         let deckOwnerId = null
         let deckShuffle = false
+        let deckUnit = ''  
 
         async function init() {
             // 加载词卡集信息
-            const { data: deck, error: deckError } = await supabase
+            const { data: deck } = await supabase
                 .from('decks')
-                .select('*')
+                .select('*, subjects(name)')
                 .eq('id', deckId)
                 .single()
 
-            if (deckError) {
-                deckTitleEl.textContent = '加载失败：' + deckError.message
+            deckUnit = deck.unit
+            const subjectName = deck.subjects?.name || '未分类'
+            document.getElementById('deck-subject-unit').textContent = `学科：${subjectName} · 单元：${deckUnit}`
+            
+            if (!deck) {
+                deckTitleEl.textContent = '加载失败：未找到该词卡集'
                 return
             }
 
