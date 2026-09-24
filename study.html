@@ -17,7 +17,14 @@
         <p id="progress"></p>
 
         <div id="flashcard" class="flashcard">
-            <div id="card-text">...</div>
+            <div class="flashcard-inner">
+                <div class="flashcard-face flashcard-front">
+                    <span id="card-front-text">...</span>
+                </div>
+                <div class="flashcard-face flashcard-back">
+                    <span id="card-back-text"></span>
+                </div>
+            </div>
         </div>
 
         <p id="hint">点击卡片翻面</p>
@@ -45,7 +52,8 @@
         const studyArea = document.getElementById('study-area')
         const progressEl = document.getElementById('progress')
         const flashcard = document.getElementById('flashcard')
-        const cardText = document.getElementById('card-text')
+        const cardFrontText = document.getElementById('card-front-text')
+        const cardBackText = document.getElementById('card-back-text')
         const hint = document.getElementById('hint')
         const answerButtons = document.getElementById('answer-buttons')
         const knowBtn = document.getElementById('know-btn')
@@ -140,25 +148,32 @@
         function showCard() {
             const card = cards[currentIndex]
             showingFront = true
-            cardText.textContent = card.front
+
+            cardFrontText.textContent = card.front
+            cardBackText.textContent = card.back
+
+            // 切到下一张时“瞬间”回到正面，避免看到翻回去的动画
+            flashcard.classList.add('no-transition')
+            flashcard.classList.remove('flipped')
+            void flashcard.offsetWidth   // 强制重排，让 no-transition 立即生效
+            flashcard.classList.remove('no-transition')
+
             hint.textContent = '点击卡片翻面'
             answerButtons.style.display = 'none'
             progressEl.textContent = `${currentIndex + 1} / ${cards.length}`
         }
 
         flashcard.addEventListener('click', () => {
-            const card = cards[currentIndex]
             if (showingFront) {
-                cardText.textContent = card.back
+                flashcard.classList.add('flipped')
                 hint.textContent = '这张卡你掌握了吗？'
                 answerButtons.style.display = 'block'
-                showingFront = false
             } else {
-                cardText.textContent = card.front
+                flashcard.classList.remove('flipped')
                 hint.textContent = '点击卡片翻面'
                 answerButtons.style.display = 'none'
-                showingFront = true
             }
+            showingFront = !showingFront
         })
 
         function updateFavoriteBtn() {
