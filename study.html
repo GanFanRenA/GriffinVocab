@@ -37,6 +37,20 @@
 
     <p id="done-message" style="display:none;"></p>
 
+    <section id="comments-section" style="display:none;">
+        <h2>大家的看法</h2>
+
+        <form id="comment-form">
+            <textarea id="comment-input" rows="3"
+                    placeholder="说说你对这个词卡集的理解、记忆技巧或疑问…"
+                    maxlength="1000" required></textarea>
+            <button type="submit">发表</button>
+        </form>
+        <p id="comment-message"></p>
+
+        <div id="comments-list">加载中...</div>
+    </section>
+
     <script type="module">
         
         import { supabase, requireLogin } from './script.js'
@@ -60,6 +74,11 @@
         const dontKnowBtn = document.getElementById('dont-know-btn')
         const doneMessage = document.getElementById('done-message')
         const favoriteBtn = document.getElementById('favorite-btn')
+        const commentsSection = document.getElementById('comments-section')
+        const commentForm     = document.getElementById('comment-form')
+        const commentInput    = document.getElementById('comment-input')
+        const commentMessage  = document.getElementById('comment-message')
+        const commentsList    = document.getElementById('comments-list')
 
         let allCards = []        // 词卡集里的全部卡片（不变）
         let cards = []           // 当前这一轮要过的卡片
@@ -241,7 +260,116 @@
                     startRound(unknownCards)
                 })
             }
+
+            // 显示评论区并加载
+            commentsSection.style.display = 'block'
+            loadComments()
         }
+
+        /* ==================== 评论功能 ==================== */
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;',
+                '"': '&quot;', "'": '&#39;'
+            }[c]))
+        }
+
+        // 简单相对时间
+        function formatTime(iso) {
+            const d = new Date(iso)
+            const diff = (Date.now() - d.getTime()) / 1000
+            if (diff < 60)         return '刚刚'
+            if (diff < 3600)       return `${Math.floor(diff / 60)} 分钟前`
+            if (diff < 86400)      return `${Math.floor(diff / 3600)} 小时前`
+            if (diff < 86400 * 7)  return `${Math.floor(diff / 86400)} 天前`
+            return d.toLocaleDateString('zh-CN')
+        }
+
+        async function loadComments() {
+            commentsList.textContent = '加载中...'
+
+            const { data, error } = await supabase
+                .from('comments')
+                .select('id, content, created_at, user_id, profiles(username)')
+                .eq('deck_id', deckId)
+                .order('created_at', { ascending: false })
+
+            if (error) {
+                commentsList.textContent = '加载失败：' + error.message
+                return
+            }
+
+            if (data.length === 0) {
+                commentsList.innerHTML =
+                    '<p class="comments-empty">还没有人发表看法，来说两句吧～</p>'
+                return
+            }
+
+            commentsList.innerHTML = data.map(c => {
+                const name = c.profiles?.username || '匿名'
+                const mine = c.user_id === currentUser.id
+                const deleteBtn = mine
+                    ? `<button class="delete-comment-btn" data-id="${c.id}">删除</button>`
+                    : ''
+
+                return `
+                    <div class="comment-item" data-id="${c.id}">
+                        <div class="comment-head">
+                            <a class="comment-author"
+                            href="profile.html?user=${c.user_id}">${escapeHtml(name)}</a>
+                            <span class="comment-time">${formatTime(c.created_at)}</span>
+                            ${deleteBtn}
+                        </div>
+                        <div class="comment-body">${escapeHtml(c.content)}</div>
+                    </div>
+                `
+            }).join('')
+
+            commentsList.querySelectorAll('.delete-comment-btn').forEach(btn => {
+                btn.addEventListener('click', () => deleteComment(btn.dataset.id))
+            })
+        }
+
+        async function deleteComment(commentId) {
+            if (!confirm('确定删除这条评论？')) return
+
+            const { error } = await supabase
+                .from('comments')
+                .delete()
+                .eq('id', commentId)
+
+            if (error) {
+                alert('删除失败：' + error.message)
+                return
+            }
+            loadComments()
+        }
+
+        commentForm?.addEventListener('submit', async (e) => {
+            e.preventDefault()
+            const content = commentInput.value.trim()
+            if (!content) return
+
+            commentMessage.textContent = '发表中...'
+
+            const { error } = await supabase
+                .from('comments')
+                .insert({
+                    deck_id: deckId,
+                    user_id: currentUser.id,
+                    content
+                })
+
+            if (error) {
+                commentMessage.textContent = '发表失败：' + error.message
+                return
+            }
+
+            commentMessage.textContent = ''
+            commentInput.value = ''
+            loadComments()
+        })
 
         knowBtn.addEventListener('click', () => nextCard(true))
         dontKnowBtn.addEventListener('click', () => nextCard(false))
