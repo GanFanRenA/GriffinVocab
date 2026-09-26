@@ -3,15 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>学习模式</title>
+    <title>Learning Mode</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <p><a id="back-link" href="index.html">← 返回</a></p>
+    <p><a id="back-link" href="index.html">← Back</a></p>
 
-    <h1 id="deck-title">加载中...</h1>
+    <h1 id="deck-title">Loading...</h1>
 
-    <button id="favorite-btn">收藏</button>
+    <button id="favorite-btn">Favorite</button>
 
     <div id="study-area" style="display:none;">
         <p id="progress"></p>
@@ -27,28 +27,28 @@
             </div>
         </div>
 
-        <p id="hint">点击卡片翻面</p>
+        <p id="hint">Click the card to flip</p>
 
         <div id="answer-buttons" style="display:none;">
-            <button id="know-btn">会</button>
-            <button id="dont-know-btn">不会</button>
+            <button id="know-btn">Know</button>
+            <button id="dont-know-btn">Don't Know</button>
         </div>
     </div>
 
     <p id="done-message" style="display:none;"></p>
 
     <section id="comments-section" style="display:none;">
-        <h2>大家的看法</h2>
+        <h2>Comments</h2>
 
         <form id="comment-form">
             <textarea id="comment-input" rows="3"
-                    placeholder="说说你对这个词卡集的理解、记忆技巧或疑问…"
+                    placeholder="Share your understanding, memory tips, or questions about this deck..."
                     maxlength="1000" required></textarea>
-            <button type="submit">发表</button>
+            <button type="submit">Post</button>
         </form>
         <p id="comment-message"></p>
 
-        <div id="comments-list">加载中...</div>
+        <div id="comments-list">Loading...</div>
     </section>
 
     <script type="module">
@@ -56,7 +56,7 @@
         import { supabase, requireLogin } from './script.js'
 
         const currentUser = await requireLogin()
-        if (!currentUser) throw new Error('未登录，正在跳转')
+        if (!currentUser) throw new Error('Not logged in, redirecting...')
 
         const params = new URLSearchParams(window.location.search)
         const deckId = params.get('id')
@@ -112,18 +112,18 @@
 
             if (currentUser.id !== deck?.user_id) {
                 backLink.href = 'index.html'
-                backLink.textContent = '← 返回首页'
+                backLink.textContent = '← Back to Home'
             } else {
                 backLink.href = `deck.html?id=${deckId}`
             }
 
             if (cardsError) {
-                deckTitleEl.textContent = '加载失败：' + cardsError.message
+                deckTitleEl.textContent = 'Failed to load: ' + cardsError.message
                 return
             }
 
             if (!cardsData || cardsData.length === 0) {
-                deckTitleEl.textContent = '这个词卡集还没有单词卡'
+                deckTitleEl.textContent = 'This deck has no cards yet'
                 return
             }
 
@@ -177,7 +177,7 @@
             void flashcard.offsetWidth   // 强制重排，让 no-transition 立即生效
             flashcard.classList.remove('no-transition')
 
-            hint.textContent = '点击卡片翻面'
+            hint.textContent = 'Click the card to flip'
             answerButtons.style.display = 'none'
             progressEl.textContent = `${currentIndex + 1} / ${cards.length}`
         }
@@ -185,18 +185,18 @@
         flashcard.addEventListener('click', () => {
             if (showingFront) {
                 flashcard.classList.add('flipped')
-                hint.textContent = '这张卡你掌握了吗？'
+                hint.textContent = 'Do you know this card?'
                 answerButtons.style.display = 'block'
             } else {
                 flashcard.classList.remove('flipped')
-                hint.textContent = '点击卡片翻面'
+                hint.textContent = 'Click the card to flip'
                 answerButtons.style.display = 'none'
             }
             showingFront = !showingFront
         })
 
         function updateFavoriteBtn() {
-            favoriteBtn.textContent = isFavorite ? '已收藏' : '收藏'
+            favoriteBtn.textContent = isFavorite ? 'Favorited' : 'Favorite'
         }
 
         favoriteBtn.addEventListener('click', async () => {
@@ -212,7 +212,7 @@
                 }, { onConflict: 'user_id,deck_id' })
 
             if (error) {
-                alert('操作失败：' + error.message)
+                alert('Operation failed: ' + error.message)
                 return
             }
 
@@ -240,14 +240,14 @@
             studyArea.style.display = 'none'
             doneMessage.style.display = 'block'
 
-            let html = `<p>完成！本轮共 ${cards.length} 张，掌握 ${knownCount} 张，未掌握 ${unknownCount} 张。</p>`
-            html += `<button id="restart-all-btn">全部重学</button>`
+            let html = `<p>Done! This round has ${cards.length} cards, you knew ${knownCount} cards, and didn't know ${unknownCount} cards.</p>`
+            html += `<button id="restart-all-btn">Restart All</button>`
 
             if (unknownCards.length > 0) {
-                html += `<button id="review-unknown-btn">巩固知识（重学不会的 ${unknownCards.length} 张）</button>`
+                html += `<button id="review-unknown-btn">Review Unknown (${unknownCards.length} cards you didn't know)</button>`
             }
 
-            html += `<a href="index.html">返回首页</a>`
+            html += `<a href="index.html">Back to Home</a>`
             doneMessage.innerHTML = html
 
             document.getElementById('restart-all-btn').addEventListener('click', () => {
@@ -279,15 +279,15 @@
         function formatTime(iso) {
             const d = new Date(iso)
             const diff = (Date.now() - d.getTime()) / 1000
-            if (diff < 60)         return '刚刚'
-            if (diff < 3600)       return `${Math.floor(diff / 60)} 分钟前`
-            if (diff < 86400)      return `${Math.floor(diff / 3600)} 小时前`
-            if (diff < 86400 * 7)  return `${Math.floor(diff / 86400)} 天前`
+            if (diff < 60)         return 'Just now'
+            if (diff < 3600)       return `${Math.floor(diff / 60)} minutes ago`
+            if (diff < 86400)      return `${Math.floor(diff / 3600)} hours ago`
+            if (diff < 86400 * 7)  return `${Math.floor(diff / 86400)} days ago`
             return d.toLocaleDateString('zh-CN')
         }
 
         async function loadComments() {
-            commentsList.textContent = '加载中...'
+            commentsList.textContent = 'Loading...'
 
             const { data, error } = await supabase
                 .from('comments')
@@ -296,13 +296,13 @@
                 .order('created_at', { ascending: false })
 
             if (error) {
-                commentsList.textContent = '加载失败：' + error.message
+                commentsList.textContent = 'Failed to load: ' + error.message
                 return
             }
 
             if (data.length === 0) {
                 commentsList.innerHTML =
-                    '<p class="comments-empty">还没有人发表看法，来说两句吧～</p>'
+                    '<p class="comments-empty">No comments yet, be the first to comment!</p>'
                 return
             }
 
@@ -310,7 +310,7 @@
                 const name = c.profiles?.username || '匿名'
                 const mine = c.user_id === currentUser.id
                 const deleteBtn = mine
-                    ? `<button class="delete-comment-btn" data-id="${c.id}">删除</button>`
+                    ? `<button class="delete-comment-btn" data-id="${c.id}">Delete</button>`
                     : ''
 
                 return `
@@ -332,7 +332,7 @@
         }
 
         async function deleteComment(commentId) {
-            if (!confirm('确定删除这条评论？')) return
+            if (!confirm('Are you sure you want to delete this comment?')) return
 
             const { error } = await supabase
                 .from('comments')
@@ -340,7 +340,7 @@
                 .eq('id', commentId)
 
             if (error) {
-                alert('删除失败：' + error.message)
+                alert('Failed to delete: ' + error.message)
                 return
             }
             loadComments()
@@ -351,7 +351,7 @@
             const content = commentInput.value.trim()
             if (!content) return
 
-            commentMessage.textContent = '发表中...'
+            commentMessage.textContent = 'Posting...'
 
             const { error } = await supabase
                 .from('comments')
@@ -362,7 +362,7 @@
                 })
 
             if (error) {
-                commentMessage.textContent = '发表失败：' + error.message
+                commentMessage.textContent = 'Failed to post: ' + error.message
                 return
             }
 

@@ -3,36 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>词卡集详情</title>
+    <title>Deck Details</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <p><a href="index.html">← 返回首页</a></p>
+    <p><a href="index.html">← Back to Home</a></p>
 
-    <h1 id="deck-title">加载中...</h1>
+    <h1 id="deck-title">Loading...</h1>
     
     <div id="deck-actions" style="display:none;">
-        <button id="edit-deck-btn">编辑标题</button>
-        <p id="deck-subject-unit"></p>
-        <button id="toggle-shuffle-btn">切换打乱设置</button>
-        <button id="delete-deck-btn">删除词卡集</button>
+        <button id="edit-deck-btn">Edit Title</button>
+        <p id="deck-subject-unit">Loading...</p>
+        <button id="toggle-shuffle-btn">Toggle Shuffle</button>
+        <button id="delete-deck-btn">Delete Deck</button>
     </div>
 
-    <p><a id="study-link" href="#">开始学习 →</a></p>
+    <p><a id="study-link" href="#">Start Studying →</a></p>
 
     <section id="add-card-section" style="display:none;">
-        <h2>添加单词卡</h2>
+        <h2>Add Card</h2>
         <form id="add-card-form">
-            <input type="text" id="card-front" placeholder="正面，如：苹果" required>
-            <input type="text" id="card-back" placeholder="背面，如：apple" required>
-            <button type="submit">添加</button>
+            <input type="text" id="card-front" placeholder="Front, e.g., Apple" required>
+            <input type="text" id="card-back" placeholder="Back, e.g., A healthy fruit" required>
+            <button type="submit">Add</button>
         </form>
         <p id="card-message"></p>
     </section>
 
     <section>
-        <h2>单词卡列表</h2>
-        <div id="cards-list">加载中...</div>
+        <h2>Cards List</h2>
+        <div id="cards-list">Loading...</div>
     </section>
 
     <script type="module">
@@ -40,7 +40,7 @@
         import { supabase, requireLogin } from './script.js'
 
         const currentUser = await requireLogin()
-        if (!currentUser) throw new Error('未登录，正在跳转')
+        if (!currentUser) throw new Error('Not logged in, redirecting...')
 
         const params = new URLSearchParams(window.location.search)
         const deckId = params.get('id')
@@ -66,11 +66,11 @@
                 .single()
 
             deckUnit = deck.unit
-            const subjectName = deck.subjects?.name || '未分类'
-            document.getElementById('deck-subject-unit').textContent = `学科：${subjectName} · 单元：${deckUnit}`
+            const subjectName = deck.subjects?.name || 'Uncategorized'
+            document.getElementById('deck-subject-unit').textContent = `Subject: ${subjectName} · Unit: ${deckUnit}`
             
             if (!deck) {
-                deckTitleEl.textContent = '加载失败：未找到该词卡集'
+                deckTitleEl.textContent = 'Failed to load: Deck not found'
                 return
             }
 
@@ -88,7 +88,7 @@
 
         // 编辑词卡集标题
         document.getElementById('edit-deck-btn')?.addEventListener('click', async () => {
-            const newTitle = prompt('新的标题：', deckTitleEl.textContent)
+            const newTitle = prompt('New Title:', deckTitleEl.textContent)
             if (!newTitle) return
 
             const { error } = await supabase
@@ -97,7 +97,7 @@
                 .eq('id', deckId)
 
             if (error) {
-                alert('修改失败：' + error.message)
+                alert('Failed to update title: ' + error.message)
                 return
             }
             deckTitleEl.textContent = newTitle
@@ -107,7 +107,7 @@
         function updateShuffleBtn() {
             const btn = document.getElementById('toggle-shuffle-btn')
             if (btn) {
-                btn.textContent = deckShuffle ? '打乱：开' : '打乱：关'
+                btn.textContent = deckShuffle ? 'Shuffle: On' : 'Shuffle: Off'
             }
         }
 
@@ -121,7 +121,7 @@
                 .eq('id', deckId)
 
             if (error) {
-                alert('修改失败：' + error.message)
+                alert('Failed to update shuffle setting: ' + error.message)
                 return
             }
 
@@ -131,7 +131,7 @@
 
         // 删除词卡集
         document.getElementById('delete-deck-btn')?.addEventListener('click', async () => {
-            if (!confirm('确定删除这个词卡集？里面的所有单词卡也会一起删除。')) return
+            if (!confirm('Are you sure you want to delete this deck? All cards inside will also be deleted.')) return
 
             const { error } = await supabase
                 .from('decks')
@@ -139,7 +139,7 @@
                 .eq('id', deckId)
 
             if (error) {
-                alert('删除失败：' + error.message)
+                alert('Failed to delete: ' + error.message)
                 return
             }
             window.location.href = 'index.html'
@@ -147,9 +147,9 @@
 
         // 编辑单词卡
         async function editCard(cardId) {
-            const newFront = prompt('新的正面：')
+            const newFront = prompt('New Front:')
             if (newFront === null) return
-            const newBack = prompt('新的背面：')
+            const newBack = prompt('New Back:')
             if (newBack === null) return
 
             const { error } = await supabase
@@ -158,7 +158,7 @@
                 .eq('id', cardId)
 
             if (error) {
-                alert('修改失败：' + error.message)
+                alert('Failed to edit: ' + error.message)
                 return
             }
             loadCards()
@@ -166,7 +166,7 @@
 
         // 删除单词卡
         async function deleteCard(cardId) {
-            if (!confirm('确定删除这张单词卡？')) return
+            if (!confirm('Are you sure you want to delete this card?')) return
 
             const { error } = await supabase
                 .from('cards')
@@ -174,7 +174,7 @@
                 .eq('id', cardId)
 
             if (error) {
-                alert('删除失败：' + error.message)
+                alert('Failed to delete: ' + error.message)
                 return
             }
             loadCards()
@@ -183,7 +183,7 @@
         // 添加单词卡（自动追加到末尾）
         addCardForm?.addEventListener('submit', async (e) => {
             e.preventDefault()
-            cardMessage.textContent = '添加中...'
+            cardMessage.textContent = 'Adding...'
 
             // 查出当前最大 position
             const { data: lastCard } = await supabase
@@ -206,11 +206,11 @@
                 })
 
             if (error) {
-                cardMessage.textContent = '出错了：' + error.message
+                cardMessage.textContent = 'Error: ' + error.message
                 return
             }
 
-            cardMessage.textContent = '添加成功'
+            cardMessage.textContent = 'Added successfully'
             cardFront.value = ''
             cardBack.value = ''
             loadCards()
@@ -233,26 +233,26 @@
                 .order('position', { ascending: true })
 
             if (error) {
-                cardsList.textContent = '加载失败：' + error.message
+                cardsList.textContent = 'Failed to load: ' + error.message
                 return
             }
 
             if (data.length === 0) {
-                cardsList.textContent = '还没有单词卡。'
+                cardsList.textContent = 'No cards yet.'
                 return
             }
 
             cardsList.innerHTML = data.map(card => `
                 <div class="card-item" draggable="true" data-id="${card.id}">
                     <div class="card-main">
-                        <span class="drag-handle" title="拖动调整顺序">⋮⋮</span>
+                        <span class="drag-handle" title="Drag to reorder">⋮⋮</span>
                         <span class="card-text">
                             <strong>${esc(card.front)}</strong> → ${esc(card.back)}
                         </span>
                     </div>
                     <div class="card-actions">
-                        <button class="edit-card-btn" data-id="${card.id}">编辑</button>
-                        <button class="delete-card-btn" data-id="${card.id}">删除</button>
+                        <button class="edit-card-btn" data-id="${card.id}">Edit</button>
+                        <button class="delete-card-btn" data-id="${card.id}">Delete</button>
                     </div>
                 </div>
             `).join('')
@@ -339,7 +339,7 @@
 
             const failed = results.find(r => r.error)
             if (failed) {
-                alert('保存顺序失败：' + failed.error.message)
+                alert('Failed to save order: ' + failed.error.message)
                 loadCards() // 重新拉取，恢复服务端顺序
             }
         }

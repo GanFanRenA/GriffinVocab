@@ -3,30 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>登录 / 注册 - 词卡教学网站</title>
+    <title>Log in / Sign up - Griffin Vocab</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>词卡教学网站</h1>
+    <h1>Griffin Vocab</h1>
 
     <div id="auth-section">
-        <h2 id="auth-title">登录</h2>
+        <h2 id="auth-title">Log in</h2>
 
         <form id="auth-form">
-            <input type="email" id="email" placeholder="邮箱" required>
-            <input type="password" id="password" placeholder="密码" required>
-            <button type="submit" id="submit-btn">登录</button>
+            <input type="email" id="email" placeholder="Email" required>
+            <input type="password" id="password" placeholder="Password" required>
+            <button type="submit" id="submit-btn">Log in</button>
         </form>
 
         <p>
-            <span id="toggle-text">还没有账号？</span>
-            <a href="#" id="toggle-link">去注册</a>
+            <span id="toggle-text">No account yet?</span>
+            <a href="#" id="toggle-link">Sign up</a>
         </p>
 
         <p id="message"></p>
     </div>
 
-    <p><a href="index.html">返回首页</a></p>
+    <p><a href="index.html">Back to Home</a></p>
 
     <script type="module">
         import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm'
@@ -51,17 +51,17 @@
         toggleLink.addEventListener('click', (e) => {
             e.preventDefault()
             isLoginMode = !isLoginMode
-            authTitle.textContent = isLoginMode ? '登录' : '注册'
-            submitBtn.textContent = isLoginMode ? '登录' : '注册'
-            toggleText.textContent = isLoginMode ? '还没有账号？' : '已经有账号？'
-            toggleLink.textContent = isLoginMode ? '去注册' : '去登录'
+            authTitle.textContent = isLoginMode ? 'Log in' : 'Sign up'
+            submitBtn.textContent = isLoginMode ? 'Log in' : 'Sign up'
+            toggleText.textContent = isLoginMode ? 'No account yet?' : 'Already have an account?'
+            toggleLink.textContent = isLoginMode ? 'Sign up' : 'Log in'
             message.textContent = ''
         })
 
         // 提交表单
         form.addEventListener('submit', async (e) => {
             e.preventDefault()
-            message.textContent = '处理中...'
+            message.textContent = 'Processing...'
 
             const email = emailInput.value
             const password = passwordInput.value
@@ -74,15 +74,15 @@
             }
 
             if (result.error) {
-                message.textContent = '出错了：' + result.error.message
+                message.textContent = 'Error: ' + result.error.message
                 return
             }
 
             if (isLoginMode) {
-                message.textContent = '登录成功，正在跳转...'
+                message.textContent = 'Login successful, redirecting...'
                 window.location.href = 'index.html'
             } else {
-                message.textContent = '注册成功！请检查邮箱确认（如果开启了邮箱验证），然后登录。'
+                message.textContent = 'Sign up successful! Please check your email for confirmation (if email verification is enabled), then log in.'
             }
         })
     </script>

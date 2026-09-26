@@ -3,43 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>词卡教学网站</title>
+    <title>Griffin Vocab</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <header>
-        <h1>词卡教学网站</h1>
+        <h1>Griffin Vocab</h1>
         <div id="user-area">
             <span id="user-email"></span>
             <div id="user-area">
-                <a id="my-profile-link" href="#">我的词卡集</a>
+                <a id="my-profile-link" href="#">My Decks</a>
                 <span id="user-email"></span>
-                <a href="my-learning.html">我的学习</a>
-                <a href="settings.html">设置</a>
-                <button id="logout-btn">登出</button>
+                <a href="my-learning.html">My Learning</a>
+                <a href="settings.html">Settings</a>
+                <button id="logout-btn">Log out</button>
             </div>
         </div>
     </header>
 
     <section id="create-section" style="display:none;">
-        <h2>创建词卡集</h2>
+        <h2>Create Deck</h2>
         <form id="create-deck-form">
-            <input type="text" id="deck-title" placeholder="词卡集标题，如：水果词汇" required>
+            <input type="text" id="deck-title" placeholder="Deck Title, e.g., Fruit Vocabulary" required>
             <select id="deck-subject" required>
-                <option value="">选择学科...</option>
+                <option value="">Select Subject...</option>
             </select>
 
-            <input type="text" id="deck-unit" placeholder="单元，如 Chapter 1" required>
+            <input type="text" id="deck-unit" placeholder="Unit, e.g., Chapter 1" required>
             <div id="unit-suggestions"></div>
-            <button type="submit">创建</button>
+            <button type="submit">Create</button>
         </form>
         <p id="create-message"></p>
     </section>
 
     <section>
-        <h2>所有词卡集</h2>
-        <input type="text" id="search-input" placeholder="搜索标题或作者...">
-        <div id="decks-list">加载中...</div>
+        <h2>All Decks</h2>
+        <input type="text" id="search-input" placeholder="Search by title or author...">
+        <div id="decks-list">Loading...</div>
     </section>
 
     <script type="module">
@@ -47,7 +47,7 @@
        import { supabase, requireLogin, logout } from './script.js'
 
         const currentUser = await requireLogin()
-        if (!currentUser) throw new Error('未登录，正在跳转')
+        if (!currentUser) throw new Error('Not login, redirecting...')
 
         const userArea = document.getElementById('user-area')
         const userEmail = document.getElementById('user-email')
@@ -60,6 +60,8 @@
         const subjectSelect = document.getElementById('deck-subject')
         const unitInput = document.getElementById('deck-unit')
         const unitSuggestions = document.getElementById('unit-suggestions')
+
+        let allDecks = []
 
         const { data: subjects } = await supabase
             .from('subjects')
@@ -132,11 +134,11 @@
                 .single()
 
             if (error) {
-                createMessage.textContent = '出错了：' + error.message
+                createMessage.textContent = 'Error: ' + error.message
                 return
             }
 
-            createMessage.textContent = '创建成功，正在跳转到编辑页面...'
+            createMessage.textContent = 'Created successfully, redirecting to the edit page...'
             window.location.href = `deck.html?id=${data.id}`
         })
 
@@ -159,8 +161,6 @@
             renderDecks(filtered)
         })
 
-        let allDecks = []
-
         async function loadDecks() {
             const { data, error } = await supabase
                 .from('decks')
@@ -168,7 +168,7 @@
                 .order('created_at', { ascending: false })
 
             if (error) {
-                decksList.textContent = '加载失败：' + error.message
+                decksList.textContent = 'Failed to load: ' + error.message
                 return
             }
 
@@ -176,17 +176,20 @@
             renderDecks(allDecks)
         }
 
+        // 记住用户手动展开/折叠过的学科，搜索时保持状态
+        const collapsedState = new Map()   // subject -> boolean（true = 展开）
+
         function renderDecks(decks) {
             if (decks.length === 0) {
-                decksList.textContent = '没有找到匹配的词卡集。'
+                decksList.textContent = 'No matching decks found.'
                 return
             }
 
             // 按学科 → 单元分组
             const grouped = {}
-            decks.forEach(deck => {          // ← 注意：用参数 decks，不是 allDecks
-                const subject = deck.subjects?.name || '未分类'
-                const unit = deck.unit || '未分单元'
+            decks.forEach(deck => {
+                const subject = deck.subjects?.name || 'Uncategorized'
+                const unit = deck.unit || 'Unassigned Unit'
                 if (!grouped[subject]) grouped[subject] = {}
                 if (!grouped[subject][unit]) grouped[subject][unit] = []
                 grouped[subject][unit].push(deck)
@@ -194,7 +197,23 @@
 
             let html = ''
             Object.keys(grouped).sort().forEach(subject => {
-                html += `<h2>${subject}</h2>`
+                // 默认折叠：只有用户手动点开过（map 里存 true）才展开
+                const isOpen = collapsedState.get(subject) === true
+
+                // 统计该学科下有多少个词卡集
+                const deckCount = Object.values(grouped[subject])
+                    .reduce((sum, arr) => sum + arr.length, 0)
+
+                html += `
+                    <div class="subject-group${isOpen ? ' open' : ''}" data-subject="${subject}">
+                        <button class="subject-header" type="button">
+                            <span class="subject-name">${subject}</span>
+                            <span class="subject-meta">${deckCount} decks</span>
+                            <span class="subject-arrow">▾</span>
+                        </button>
+                        <div class="subject-body">
+                `
+
                 Object.keys(grouped[subject]).sort().forEach(unit => {
                     html += `<h3>${unit}</h3>`
                     grouped[subject][unit].forEach(deck => {
@@ -204,21 +223,36 @@
                             : `study.html?id=${deck.id}`
 
                         const cardCount = deck.cards?.[0]?.count ?? 0
-                        const author = deck.profiles?.username || '匿名'
+                        const author = deck.profiles?.username || 'Anonymous'
 
                         html += `
                             <div class="deck-item">
                                 <a href="${target}">${deck.title}</a>
                                 <div class="deck-meta">
-                                    作者：<a href="profile.html?user=${deck.user_id}">${author}</a> · ${cardCount} 张卡片
+                                    Author: <a href="profile.html?user=${deck.user_id}">${author}</a> · ${cardCount} cards
                                 </div>
                             </div>
                         `
                     })
                 })
+
+                html += `
+                        </div>
+                    </div>
+                `
             })
 
             decksList.innerHTML = html
+
+            // 绑定学科头的展开 / 折叠
+            decksList.querySelectorAll('.subject-header').forEach(header => {
+                header.addEventListener('click', () => {
+                    const group = header.closest('.subject-group')
+                    const subject = group.dataset.subject
+                    const nowOpen = group.classList.toggle('open')
+                    collapsedState.set(subject, nowOpen)
+                })
+            })
         }
 
         loadDecks()
