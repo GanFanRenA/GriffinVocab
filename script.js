@@ -23,3 +23,19 @@ export async function logout() {
     await supabase.auth.signOut()
     window.location.href = 'login.html'
 }
+
+// ==================== 单元排序 ====================
+// 自然排序：字母按本地化字母序，数字按数值比较
+// 例：Unit 2 排在 Unit 10 之前；Chapter A 排在 Chapter B 之前
+// sensitivity: 'base' 让大小写不敏感（"unit 1" 与 "Unit 1" 视为相同）
+export function compareUnits(a, b) {
+  return String(a ?? '').localeCompare(String(b ?? ''), 'zh-CN', {
+    numeric: true,
+    sensitivity: 'base'
+  })
+}
+
+// 返回按字母序排好序的新数组（不修改原数组）
+export function sortUnits(units) {
+  return [...units].sort(compareUnits)
+}
