@@ -10,14 +10,11 @@
     <header>
         <h1>Griffin Vocab</h1>
         <div id="user-area">
+            <a id="my-profile-link" href="#">My Decks</a>
+            <a href="my-learning.html">My Learning</a>
+            <a href="settings.html">Settings</a>
             <span id="user-email"></span>
-            <div id="user-area">
-                <a id="my-profile-link" href="#">My Decks</a>
-                <span id="user-email"></span>
-                <a href="my-learning.html">My Learning</a>
-                <a href="settings.html">Settings</a>
-                <button id="logout-btn">Log out</button>
-            </div>
+            <button id="logout-btn">Log out</button>
         </div>
     </header>
 
@@ -29,7 +26,7 @@
                 <input
                     type="text"
                     id="subject-input"
-                    placeholder="搜索或输入新学科..."
+                    placeholder="Search or enter a new subject..."
                     autocomplete="off"
                     required
                 >
@@ -38,6 +35,7 @@
             </div>
 
             <input type="text" id="deck-unit" placeholder="Unit, e.g., Chapter 1" required>
+            <p id="unit-hint" class="unit-hint" hidden></p>
             <div id="unit-suggestions"></div>
             <button type="submit">Create</button>
         </form>
@@ -71,6 +69,7 @@
         const subjectCombobox = document.getElementById('subject-combobox')
         const unitInput = document.getElementById('deck-unit')
         const unitSuggestions = document.getElementById('unit-suggestions')
+        const unitHint = document.getElementById('unit-hint')
 
         let allDecks = []
         let allSubjects = []
@@ -78,6 +77,7 @@
         userEmail.textContent = currentUser.email
         createSection.style.display = 'block'
 
+        
         // 登出
         logoutBtn?.addEventListener('click', async () => {
             await logout()
@@ -86,12 +86,12 @@
         // 创建词卡集
         createForm?.addEventListener('submit', async (e) => {
             e.preventDefault()
-            createMessage.textContent = '创建中...'
+            createMessage.textContent = 'Creating...'
 
             // 1. 解析学科：如果输入了名字但没从下拉里选，就按名字查重/创建
             const subjectName = subjectInput.value.trim()
             if (!subjectName) {
-                createMessage.textContent = '请选择或输入学科'
+                createMessage.textContent = 'Please select or enter a subject'
                 return
             }
             let subjectId = subjectHidden.value
@@ -102,7 +102,7 @@
                 subjectHidden.value = subj.id
                 subjectInput.value = subj.name
                 } catch (err) {
-                createMessage.textContent = '创建学科失败: ' + err.message
+                createMessage.textContent = 'Failed to create subject: ' + err.message
                 return
                 }
             }
@@ -279,11 +279,11 @@
         // 没完全匹配时，显示「+ 创建」
         const hasExact = allSubjects.some(s => s.name.toLowerCase() === kwLower)
         if (kw && !hasExact) {
-            html += `<div class="combobox-create" data-name="${esc(kw)}">+ 创建“${esc(kw)}”</div>`
+            html += `<div class="combobox-create" data-name="${esc(kw)}">+ Create "${esc(kw)}"</div>`
         }
 
         if (!html) {
-            html = '<div class="combobox-empty">没有匹配的学科</div>'
+            html = '<div class="combobox-empty">No matching subjects</div>'
         }
 
         subjectDropdown.innerHTML = html
@@ -292,6 +292,60 @@
 
         function hideSubjectDropdown() {
         subjectDropdown.hidden = true
+        }
+
+        /* ==================== 单元：智能推荐 ==================== */
+        // 分析已有单元，推断命名模式并返回下一个推荐值
+        // 支持：Unit 1 / Chapter 2 / 第1章 / Day 3 / 1.2 等
+        function getRecommendedUnit(units) {
+        if (!units.length) return ''
+
+        const pattern = /^(.*?)(\d+)(.*)$/
+        const groups = new Map() // prefix -> { max, count, suffixes }
+
+        units.forEach(u => {
+            const m = String(u).match(pattern)
+            if (!m) return
+            const prefix = m[1]
+            const num = parseInt(m[2], 10)
+            const suffix = m[3]
+
+            if (!groups.has(prefix)) {
+            groups.set(prefix, { max: num, count: 1, suffixes: new Set([suffix]) })
+            } else {
+            const info = groups.get(prefix)
+            if (num > info.max) info.max = num
+            info.count++
+            info.suffixes.add(suffix)
+            }
+        })
+
+        // 没有可识别的"前缀+数字"模式，退回第一个已有单元
+        if (groups.size === 0) return units[0]
+
+        // 选出现次数最多的前缀（最主流的命名方式）
+        let best = null
+        let bestCount = 0
+        for (const [prefix, info] of groups) {
+            if (info.count > bestCount) {
+            bestCount = info.count
+            best = { prefix, ...info }
+            }
+        }
+
+        // 如果所有后缀一致（比如都是"章"），保留后缀
+        const suffix = best.suffixes.size === 1 ? [...best.suffixes][0] : ''
+
+        return `${best.prefix}${best.max + 1}${suffix}`
+        }
+
+        // 生成格式提示文案
+        function describeUnitPattern(units) {
+        const recommended = getRecommendedUnit(units)
+        if (!recommended) return ''
+        const m = recommended.match(/^(.*?)(\d+)(.*)$/)
+        if (!m) return ''
+        return `检测到格式：${m[1]}N${m[3]}`
         }
 
         /* ==================== 学科：选中 ==================== */
@@ -341,48 +395,18 @@
         return data
         }
 
-        /* ==================== 学科：切换后加载单元建议 ==================== */
-        async function onSubjectSelected(subjectId) {
-        unitSuggestions.innerHTML = ''
-        unitInput.value = ''
-        if (!subjectId) return
-
-        const { data } = await supabase
-            .from('decks')
-            .select('unit')
-            .eq('subject_id', subjectId)
-
-        const uniqueUnits = sortUnits(
-            [...new Set((data || []).map(d => d.unit).filter(Boolean))]
-        )
-
-        if (uniqueUnits.length > 0) {
-            unitInput.value = uniqueUnits[0]
-        }
-
-        unitSuggestions.innerHTML = uniqueUnits.map(u =>
-            `<span class="unit-tag" data-unit="${esc(u)}">${esc(u)}</span>`
-        ).join('')
-
-        unitSuggestions.querySelectorAll('.unit-tag').forEach(tag => {
-            tag.addEventListener('click', () => {
-            unitInput.value = tag.dataset.unit
-            })
-        })
-        }
-
-        /* ==================== 学科：组合框事件 ==================== */
+        // ❌ 缺失 1：聚焦时展示全部学科
         subjectInput.addEventListener('focus', () => {
         renderSubjectDropdown(subjectInput.value)
         })
 
+        // ❌ 缺失 2：输入时过滤
         subjectInput.addEventListener('input', () => {
-        // 用户改动了文字，之前选中的 id 作废，提交时再按名字查重/创建
-        subjectHidden.value = ''
+        subjectHidden.value = ''   // 用户改了文字，之前选中的 id 作废
         renderSubjectDropdown(subjectInput.value)
         })
 
-        // 用 mousedown 而不是 click，防止 input blur 先触发导致下拉被关掉
+        // ❌ 缺失 3：点击下拉项 —— 选中或创建
         subjectDropdown.addEventListener('mousedown', async (e) => {
         const option = e.target.closest('.combobox-option')
         const createBtn = e.target.closest('.combobox-create')
@@ -396,16 +420,83 @@
         if (createBtn) {
             e.preventDefault()
             const name = createBtn.dataset.name
-            createBtn.textContent = '创建中...'
+            createBtn.textContent = 'Creating...'
             try {
             const subj = await createSubject(name)
             selectSubject(subj.id, subj.name)
             } catch (err) {
-            createMessage.textContent = '创建学科失败: ' + err.message
+            createMessage.textContent = 'Failed to create subject: ' + err.message
             renderSubjectDropdown(subjectInput.value)
             }
         }
         })
+
+        /* ==================== 学科：组合框事件 ==================== */
+        async function onSubjectSelected(subjectId) {
+            unitSuggestions.innerHTML = ''
+            unitHint.hidden = true
+            unitInput.value = ''
+            unitInput.placeholder = 'Unit, e.g., Chapter 1 Index'
+            if (!subjectId) return
+
+            const { data } = await supabase
+                .from('decks')
+                .select('unit')
+                .eq('subject_id', subjectId)
+
+            const uniqueUnits = sortUnits(
+                [...new Set((data || []).map(d => d.unit).filter(Boolean))]
+            )
+
+            // 该学科还没有任何单元
+            if (uniqueUnits.length === 0) {
+                unitInput.placeholder = 'e.g., Unit 1, Chapter 1, Day 1'
+                return
+            }
+
+            // 计算推荐
+            const recommended = getRecommendedUnit(uniqueUnits)
+            const isNew = !uniqueUnits.includes(recommended)
+
+            // 预填推荐
+            unitInput.value = recommended
+
+            // 格式提示
+            const hintText = describeUnitPattern(uniqueUnits)
+            if (hintText) {
+                unitHint.textContent = hintText
+                unitHint.hidden = false
+            }
+
+            // 渲染标签：推荐（若为新值）在前，已有单元在后
+            let html = ''
+            if (isNew) {
+                html += `<span class="unit-tag recommended" data-unit="${esc(recommended)}">${esc(recommended)}</span>`
+            }
+            html += uniqueUnits.map(u =>
+                `<span class="unit-tag" data-unit="${esc(u)}">${esc(u)}</span>`
+            ).join('')
+
+            unitSuggestions.innerHTML = html
+
+            // 绑定点击
+            unitSuggestions.querySelectorAll('.unit-tag').forEach(tag => {
+                tag.addEventListener('click', () => {
+                unitInput.value = tag.dataset.unit
+                markActiveUnitTag()
+                })
+            })
+
+            markActiveUnitTag()
+            }
+
+            // 高亮与当前输入匹配的标签
+            function markActiveUnitTag() {
+            const current = unitInput.value.trim()
+            unitSuggestions.querySelectorAll('.unit-tag').forEach(tag => {
+                tag.classList.toggle('active', tag.dataset.unit === current)
+            })
+            }
 
         // 点击组合框外部关闭下拉
         document.addEventListener('click', (e) => {
@@ -413,6 +504,8 @@
             hideSubjectDropdown()
         }
         })
+
+        unitInput.addEventListener('input', markActiveUnitTag)
 
         // 初始加载学科列表
         await loadSubjects()
