@@ -356,12 +356,13 @@ Supabase 认证设置：
 [ ] 首页显示自己的学习进度
 [ ] 词卡集内卡片搜索
 [ ] 导出 / 导入词卡集
-[ ] 单元自然排序（Chapter 1 vs Chapter 10）
+[ ] Commetns显示时间优化
+[Done] 单元自然排序（Chapter 1 vs Chapter 10）
 [ ] 词卡集分页（数据量大时）
 [ ] 邮箱验证流程优化
 [ ] 评论实时更新（Supabase Realtime）
 [ ] 移动端拖拽排序（Pointer Events）
-[ ] 单元折叠（已放弃制作）
+[ ] Quizzes,(抢答题)
 
 
 ========================================

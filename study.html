@@ -40,19 +40,20 @@
 
     <p id="done-message" style="display:none;"></p>
 
-    <section id="comments-section" style="display:none;">
-        <h2>Comments</h2>
-
-        <form id="comment-form">
-            <textarea id="comment-input" rows="3"
-                placeholder="Share your understanding, memory tips, or questions about this deck..." maxlength="1000"
-                required></textarea>
+    <section id="comments-section">
+        <button id="comments-toggle" type="button">
+            <span>Comments</span>
+            <span class="comments-arrow">▾</span>
+        </button>
+        <div id="comments-body">
+            <form id="comment-form">
+            <textarea id="comment-input" rows="3" placeholder="Share your understanding, memory tips, or questions about this deck..." maxlength="1000" required></textarea>
             <button type="submit">Post</button>
-        </form>
-        <p id="comment-message"></p>
-
-        <div id="comments-list">Loading...</div>
-    </section>
+            </form>
+            <p id="comment-message"></p>
+            <div id="comments-list">Loading...</div>
+        </div>
+        </section>
 
     <section id="practice-area" style="display:none;">
         <div id="practice-main">
@@ -104,6 +105,8 @@
         const commentInput = document.getElementById('comment-input')
         const commentMessage = document.getElementById('comment-message')
         const commentsList = document.getElementById('comments-list')
+        const commentsToggle = document.getElementById('comments-toggle')
+        const commentsBody = document.getElementById('comments-body')
         const practiceArea = document.getElementById('practice-area')
         const practiceMain = document.getElementById('practice-main')
         const practiceResult = document.getElementById('practice-result')
@@ -125,6 +128,7 @@
         let unknownCards = []    // 本轮标记“不会”的卡片
         let deckShuffle = false
         let isFavorite = false
+        let commentsLoaded = false
 
         backLink.href = `deck.html?id=${deckId}`
 
@@ -181,6 +185,15 @@
                     deck_id: deckId,
                     updated_at: new Date().toISOString()
                 }, { onConflict: 'user_id,deck_id' })
+
+            // init() 里，和 deck/cards/record 并行加载
+            const commentsCountPromise = supabase
+            .from('comments')
+            .select('id', { count: 'exact', head: true })
+            .eq('deck_id', deckId)
+
+            const { count } = await commentsCountPromise
+            commentsToggle.querySelector('span').textContent = `Comments (${count ?? 0})`
 
             startRound(allCards)
         }
@@ -484,8 +497,8 @@
                 practiceBtn.addEventListener('click', () => startPractice('done'))
             }
 
-            commentsSection.style.display = 'block'
-            loadComments()
+            // 显示评论区并自动展开
+            openComments()
         }
 
         /* ==================== 评论功能 ==================== */
@@ -496,6 +509,24 @@
                 '"': '&quot;', "'": '&#39;'
             }[c]))
         }
+
+        /* ==================== 评论折叠面板 ==================== */
+        // 展开评论，并在首次展开时加载评论
+        function openComments() {
+        commentsSection.classList.add('open')
+        if (!commentsLoaded) {
+            commentsLoaded = true
+            loadComments()
+        }
+        }
+
+        commentsToggle.addEventListener('click', () => {
+        const isOpen = commentsSection.classList.toggle('open')
+        if (isOpen && !commentsLoaded) {
+            commentsLoaded = true
+            loadComments()
+        }
+        })
 
         // 简单相对时间
         function formatTime(iso) {
@@ -521,6 +552,8 @@
                 commentsList.textContent = 'Failed to load: ' + error.message
                 return
             }
+
+            commentsToggle.querySelector('span').textContent = `Comments (${data.length})`
 
             if (data.length === 0) {
                 commentsList.innerHTML =

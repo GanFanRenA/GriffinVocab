@@ -1021,11 +1021,6 @@ header h1 {
     text-align: left;
 }
 
-#comments-section h2 {
-    margin-top: 0;
-    margin-bottom: 14px;
-}
-
 #comment-form {
     display: flex;
     flex-direction: column;
@@ -1354,4 +1349,57 @@ header h1 {
 
 #practice-btn-top {
     margin-left: 8px;
+}
+
+/* ---------- 评论折叠面板 ---------- */
+#comments-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 650;
+  letter-spacing: -.01em;
+  text-align: left;
+  cursor: pointer;
+  box-shadow: none;
+  transition: color var(--transition);
+}
+
+#comments-toggle:hover {
+  background: transparent;
+  color: var(--primary);
+  box-shadow: none;
+}
+
+#comments-toggle:focus-visible {
+  outline: none;
+  box-shadow: none;
+}
+
+.comments-arrow {
+  font-size: 14px;
+  color: var(--text-muted);
+  transition: transform .25s ease, color var(--transition);
+}
+
+#comments-section.open .comments-arrow {
+  transform: rotate(180deg);
+  color: var(--primary);
+}
+
+/* 折叠体默认隐藏，open 时显示 */
+#comments-body {
+  display: none;
+  margin-top: 14px;
+}
+
+#comments-section.open #comments-body {
+  display: block;
 }
