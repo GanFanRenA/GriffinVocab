@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Deck Details</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <p><a href="index.html">← Back to Home</a></p>
 
     <h1 id="deck-title">Loading...</h1>
-    
+
     <div id="deck-actions" style="display:none;">
         <button id="edit-deck-btn">Edit Title</button>
         <p id="deck-subject-unit">Loading...</p>
@@ -36,9 +38,8 @@
     </section>
 
     <script type="module">
-        
-        import { supabase, requireLogin } from './script.js'
 
+        import { supabase, requireLogin } from './script.js'
         const currentUser = await requireLogin()
         if (!currentUser) throw new Error('Not logged in, redirecting...')
 
@@ -55,7 +56,7 @@
 
         let deckOwnerId = null
         let deckShuffle = false
-        let deckUnit = ''  
+        let deckUnit = ''
 
         async function init() {
             // 加载词卡集信息
@@ -68,7 +69,7 @@
             deckUnit = deck.unit
             const subjectName = deck.subjects?.name || 'Uncategorized'
             document.getElementById('deck-subject-unit').textContent = `Subject: ${subjectName} · Unit: ${deckUnit}`
-            
+
             if (!deck) {
                 deckTitleEl.textContent = 'Failed to load: Deck not found'
                 return
@@ -347,4 +348,5 @@
         init()
     </script>
 </body>
+
 </html>

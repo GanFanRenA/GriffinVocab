@@ -1,17 +1,20 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Learning Mode</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <p><a id="back-link" href="index.html">← Back</a></p>
 
     <h1 id="deck-title">Loading...</h1>
 
     <button id="favorite-btn">Favorite</button>
+    <button id="practice-btn-top" style="display:none;">Practice mode</button>
 
     <div id="study-area" style="display:none;">
         <p id="progress"></p>
@@ -42,8 +45,8 @@
 
         <form id="comment-form">
             <textarea id="comment-input" rows="3"
-                    placeholder="Share your understanding, memory tips, or questions about this deck..."
-                    maxlength="1000" required></textarea>
+                placeholder="Share your understanding, memory tips, or questions about this deck..." maxlength="1000"
+                required></textarea>
             <button type="submit">Post</button>
         </form>
         <p id="comment-message"></p>
@@ -51,8 +54,30 @@
         <div id="comments-list">Loading...</div>
     </section>
 
+    <section id="practice-area" style="display:none;">
+        <div id="practice-main">
+            <div class="practice-topbar">
+                <span id="practice-progress"></span>
+                <span id="practice-score"></span>
+            </div>
+
+            <div class="practice-card">
+                <div class="practice-prompt-label">Which meaning matches this word?</div>
+                <div id="practice-word" class="practice-word"></div>
+            </div>
+
+            <div id="practice-options" class="practice-options"></div>
+
+            <div id="practice-feedback" class="practice-feedback"></div>
+
+            <button id="practice-next-btn" style="display:none;">Next question</button>
+        </div>
+
+        <div id="practice-result" style="display:none;"></div>
+    </section>
+
     <script type="module">
-        
+
         import { supabase, requireLogin } from './script.js'
 
         const currentUser = await requireLogin()
@@ -75,10 +100,21 @@
         const doneMessage = document.getElementById('done-message')
         const favoriteBtn = document.getElementById('favorite-btn')
         const commentsSection = document.getElementById('comments-section')
-        const commentForm     = document.getElementById('comment-form')
-        const commentInput    = document.getElementById('comment-input')
-        const commentMessage  = document.getElementById('comment-message')
-        const commentsList    = document.getElementById('comments-list')
+        const commentForm = document.getElementById('comment-form')
+        const commentInput = document.getElementById('comment-input')
+        const commentMessage = document.getElementById('comment-message')
+        const commentsList = document.getElementById('comments-list')
+        const practiceArea = document.getElementById('practice-area')
+        const practiceMain = document.getElementById('practice-main')
+        const practiceResult = document.getElementById('practice-result')
+        const practiceProgressEl = document.getElementById('practice-progress')
+        const practiceScoreEl = document.getElementById('practice-score')
+        const practiceWordEl = document.getElementById('practice-word')
+        const practiceOptionsEl = document.getElementById('practice-options')
+        const practiceFeedbackEl = document.getElementById('practice-feedback')
+        const practiceNextBtn = document.getElementById('practice-next-btn')
+        const practiceBtnTop = document.getElementById('practice-btn-top')
+
 
         let allCards = []        // 词卡集里的全部卡片（不变）
         let cards = []           // 当前这一轮要过的卡片
@@ -132,6 +168,11 @@
             isFavorite = record?.status === 'favorite'
             updateFavoriteBtn()
 
+            // 总词数 >= 4 时，学习界面就显示练习入口
+            if (allCards.length >= 4) {
+                practiceBtnTop.style.display = 'inline-block'
+            }
+
             // “记录学过”不阻塞学习，放最后，不用 await
             supabase
                 .from('learning_records')
@@ -144,6 +185,176 @@
             startRound(allCards)
         }
 
+        /* ==================== 练习模式 ==================== */
+
+        let practiceQuestions = []   // 本轮题目对应的卡片（打乱后）
+        let practiceIndex = 0
+        let practiceCorrect = 0
+        let practiceAnswered = false
+        let practiceFrom = 'done'
+
+        // 洗牌（Fisher-Yates）
+        function shuffle(arr) {
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1))
+                    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+            }
+            return arr
+        }
+
+        // 根据一张卡片生成一道题：题干是 front，选项是 1 个正确 back + 3 个其它卡片 back
+        function buildQuestion(card) {
+            const correctBack = card.back
+            const uniqueBacks = [...new Set(allCards.map(c => c.back))]
+                .filter(b => b !== correctBack)
+
+            const distractors = shuffle([...uniqueBacks])
+                .slice(0, 3)
+                .map(t => ({ text: t, correct: false }))
+
+            const options = shuffle([
+                { text: correctBack, correct: true },
+                ...distractors
+            ])
+
+            return { card, options }
+        }
+
+        function startPractice(from = 'done') {
+            practiceFrom = from
+
+            practiceQuestions = shuffle([...allCards])
+            practiceIndex = 0
+            practiceCorrect = 0
+            practiceAnswered = false
+
+            studyArea.style.display = 'none'
+            doneMessage.style.display = 'none'
+            commentsSection.style.display = 'none'
+            practiceArea.style.display = 'block'
+
+            practiceMain.style.display = 'block'
+            practiceResult.style.display = 'none'
+            practiceResult.innerHTML = ''
+
+            showPracticeQuestion()
+        }
+
+        function showPracticeQuestion() {
+            practiceAnswered = false
+
+            const q = practiceQuestions[practiceIndex]
+            const question = buildQuestion(q)
+
+            practiceProgressEl.textContent = `${practiceIndex + 1} / ${practiceQuestions.length}`
+            practiceScoreEl.textContent = `Correct: ${practiceCorrect}`
+            practiceWordEl.textContent = q.front
+
+            // 渲染选项
+            practiceOptionsEl.innerHTML = ''
+            question.options.forEach(opt => {
+                const btn = document.createElement('button')
+                btn.type = 'button'
+                btn.className = 'practice-option'
+                btn.textContent = opt.text
+                btn.dataset.correct = opt.correct ? '1' : '0'
+                btn.addEventListener('click', () => selectPracticeOption(btn, opt.correct))
+                practiceOptionsEl.appendChild(btn)
+            })
+
+            // 清空反馈
+            practiceFeedbackEl.textContent = ''
+            practiceFeedbackEl.className = 'practice-feedback'
+            practiceNextBtn.style.display = 'none'
+            practiceNextBtn.textContent =
+                practiceIndex === practiceQuestions.length - 1 ? 'See results' : 'Next question'
+        }
+
+        function selectPracticeOption(btnEl, isCorrect) {
+            if (practiceAnswered) return
+            practiceAnswered = true
+
+            // 标记所有选项
+            practiceOptionsEl.querySelectorAll('.practice-option').forEach(btn => {
+                btn.disabled = true
+                if (btn.dataset.correct === '1') {
+                    btn.classList.add('correct')
+                } else if (btn === btnEl) {
+                    btn.classList.add('wrong')
+                }
+            })
+
+            if (isCorrect) {
+                practiceCorrect++
+                practiceFeedbackEl.textContent = 'Correct!'
+                practiceFeedbackEl.className = 'practice-feedback correct'
+            } else {
+                const correctAnswer = practiceQuestions[practiceIndex].back
+                practiceFeedbackEl.textContent = `Wrong. Correct answer: ${correctAnswer}`
+                practiceFeedbackEl.className = 'practice-feedback wrong'
+            }
+
+            practiceScoreEl.textContent = `Correct: ${practiceCorrect}`
+            practiceNextBtn.style.display = 'inline-block'
+        }
+
+        function nextPracticeQuestion() {
+            practiceIndex++
+            if (practiceIndex >= practiceQuestions.length) {
+                showPracticeDone()
+            } else {
+                showPracticeQuestion()
+            }
+        }
+
+        function showPracticeDone() {
+            practiceMain.style.display = 'none'
+            practiceResult.style.display = 'block'
+
+            const total = practiceQuestions.length
+            const rate = Math.round((practiceCorrect / total) * 100)
+
+            let emoji = '📚'
+            if (rate >= 90) emoji = '🎉'
+            else if (rate >= 70) emoji = '👍'
+            else if (rate >= 50) emoji = '💪'
+
+            practiceResult.innerHTML = `
+                <div class="practice-done-emoji">${emoji}</div>
+                <h2>Practice complete!</h2>
+                <p class="practice-done-score">${practiceCorrect} / ${total} correct</p>
+                <p class="practice-done-rate">${rate}%</p>
+                <div class="practice-done-actions">
+                    <button id="practice-again-btn">Practice again</button>
+                    <button id="practice-back-btn" class="btn-secondary">Back</button>
+                </div>
+            `
+
+            document.getElementById('practice-again-btn')
+                .addEventListener('click', startPractice)
+
+            document.getElementById('practice-back-btn')
+                .addEventListener('click', () => {
+                    practiceArea.style.display = 'none'
+                    practiceResult.style.display = 'none'
+                    practiceMain.style.display = 'block'
+
+                    if (practiceFrom === 'study') {
+                        // 从学习界面进来的，回学习界面
+                        studyArea.style.display = 'block'
+                    } else {
+                        // 从完成界面进来的，回完成界面 + 评论区
+                        doneMessage.style.display = 'block'
+                        commentsSection.style.display = 'block'
+                    }
+                })
+        }
+
+        practiceBtnTop?.addEventListener('click', () => startPractice('study'))
+
+        // 只绑定一次
+        practiceNextBtn?.addEventListener('click', nextPracticeQuestion)
+
         // 开始一轮学习，传入这一轮要过的卡片数组
         function startRound(cardList) {
             cards = [...cardList]
@@ -151,7 +362,7 @@
             if (deckShuffle) {
                 for (let i = cards.length - 1; i > 0; i--) {
                     const j = Math.floor(Math.random() * (i + 1))
-                    ;[cards[i], cards[j]] = [cards[j], cards[i]]
+                        ;[cards[i], cards[j]] = [cards[j], cards[i]]
                 }
             }
 
@@ -161,6 +372,7 @@
             unknownCards = []
             doneMessage.style.display = 'none'
             studyArea.style.display = 'block'
+            practiceArea.style.display = 'none'
             showCard()
         }
 
@@ -240,14 +452,19 @@
             studyArea.style.display = 'none'
             doneMessage.style.display = 'block'
 
-            let html = `<p>Done! This round has ${cards.length} cards, you knew ${knownCount} cards, and didn't know ${unknownCount} cards.</p>`
-            html += `<button id="restart-all-btn">Restart All</button>`
+            let html = `<p>Done! ${cards.length} cards this round · ${knownCount} known · ${unknownCount} unknown.</p>`
+            html += `<button id="restart-all-btn">Study all again</button>`
 
             if (unknownCards.length > 0) {
-                html += `<button id="review-unknown-btn">Review Unknown (${unknownCards.length} cards you didn't know)</button>`
+                html += `<button id="review-unknown-btn">Review unknown (${unknownCards.length})</button>`
             }
 
-            html += `<a href="index.html">Back to Home</a>`
+            // 新增：练习模式入口，总词数 >= 4 才显示
+            if (allCards.length >= 4) {
+                html += `<button id="practice-btn" class="practice-btn">Practice mode</button>`
+            }
+
+            html += `<a href="index.html">Back to home</a>`
             doneMessage.innerHTML = html
 
             document.getElementById('restart-all-btn').addEventListener('click', () => {
@@ -261,7 +478,12 @@
                 })
             }
 
-            // 显示评论区并加载
+            // 新增：绑定练习按钮
+            const practiceBtn = document.getElementById('practice-btn')
+            if (practiceBtn) {
+                practiceBtn.addEventListener('click', () => startPractice('done'))
+            }
+
             commentsSection.style.display = 'block'
             loadComments()
         }
@@ -279,10 +501,10 @@
         function formatTime(iso) {
             const d = new Date(iso)
             const diff = (Date.now() - d.getTime()) / 1000
-            if (diff < 60)         return 'Just now'
-            if (diff < 3600)       return `${Math.floor(diff / 60)} minutes ago`
-            if (diff < 86400)      return `${Math.floor(diff / 3600)} hours ago`
-            if (diff < 86400 * 7)  return `${Math.floor(diff / 86400)} days ago`
+            if (diff < 60) return 'Just now'
+            if (diff < 3600) return `${Math.floor(diff / 60)} minutes ago`
+            if (diff < 86400) return `${Math.floor(diff / 3600)} hours ago`
+            if (diff < 86400 * 7) return `${Math.floor(diff / 86400)} days ago`
             return d.toLocaleDateString('zh-CN')
         }
 
@@ -377,4 +599,5 @@
         init()
     </script>
 </body>
+
 </html>
