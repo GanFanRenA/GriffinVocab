@@ -1592,3 +1592,109 @@ header h1 {
   opacity: .6;
   cursor: not-allowed;
 }
+
+/* ==================== 更新弹窗 ==================== */
+.update-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, .45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 1000;
+  animation: updateFadeIn .2s ease;
+}
+
+.update-overlay.closing {
+  animation: updateFadeOut .18s ease forwards;
+}
+
+.update-popup {
+  width: 100%;
+  max-width: 380px;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-lg);
+  padding: 22px 22px 18px;
+  animation: updatePopIn .25s cubic-bezier(.34, 1.4, .64, 1);
+}
+
+.update-popup-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.update-popup-head h3 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -.01em;
+}
+
+.update-popup-close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 22px;
+  line-height: 1;
+  padding: 2px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: none;
+}
+
+.update-popup-close:hover {
+  background: var(--danger-light);
+  color: var(--danger);
+  box-shadow: none;
+}
+
+.update-popup-version {
+  margin: 0 0 12px;
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: .02em;
+}
+
+.update-popup-list {
+  margin: 0 0 16px;
+  padding-left: 20px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: var(--text);
+}
+
+.update-popup-list li {
+  margin-bottom: 4px;
+}
+
+.update-popup-foot {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.update-popup-ok {
+  font-size: 14px;
+  padding: 8px 22px;
+}
+
+@keyframes updateFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes updateFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+@keyframes updatePopIn {
+  from { opacity: 0; transform: translateY(8px) scale(.97); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
