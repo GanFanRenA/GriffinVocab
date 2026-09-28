@@ -167,6 +167,65 @@ label {
     margin-bottom: 2px;
 }
 
+/* ---------- 学科组合框 ---------- */
+.combobox {
+  position: relative;
+  margin: 8px 0;
+}
+
+.combobox > input[type="text"] {
+  margin: 0;
+}
+
+.combobox-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+}
+
+.combobox-option,
+.combobox-create,
+.combobox-empty {
+  padding: 10px 14px;
+  font-size: 15px;
+  line-height: 1.4;
+}
+
+.combobox-option {
+  cursor: pointer;
+  transition: background var(--transition), color var(--transition);
+}
+
+.combobox-option:hover {
+  background: var(--primary-light);
+  color: var(--primary);
+}
+
+.combobox-create {
+  cursor: pointer;
+  color: var(--primary);
+  font-weight: 600;
+  border-top: 1px solid var(--border);
+  transition: background var(--transition);
+}
+
+.combobox-create:hover {
+  background: var(--primary-light);
+}
+
+.combobox-empty {
+  color: var(--text-muted);
+  cursor: default;
+}
+
 
 /* ========================================================
    按钮

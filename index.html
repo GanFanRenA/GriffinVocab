@@ -25,9 +25,17 @@
         <h2>Create Deck</h2>
         <form id="create-deck-form">
             <input type="text" id="deck-title" placeholder="Deck Title, e.g., Fruit Vocabulary" required>
-            <select id="deck-subject" required>
-                <option value="">Select Subject...</option>
-            </select>
+            <div class="combobox" id="subject-combobox">
+                <input
+                    type="text"
+                    id="subject-input"
+                    placeholder="搜索或输入新学科..."
+                    autocomplete="off"
+                    required
+                >
+                <input type="hidden" id="deck-subject">
+                <div class="combobox-dropdown" id="subject-dropdown" hidden></div>
+            </div>
 
             <input type="text" id="deck-unit" placeholder="Unit, e.g., Chapter 1" required>
             <div id="unit-suggestions"></div>
@@ -57,59 +65,18 @@
         const deckTitle = document.getElementById('deck-title')
         const createMessage = document.getElementById('create-message')
         const decksList = document.getElementById('decks-list')
-        const subjectSelect = document.getElementById('deck-subject')
+        const subjectInput = document.getElementById('subject-input')
+        const subjectDropdown = document.getElementById('subject-dropdown')
+        const subjectHidden = document.getElementById('deck-subject')
+        const subjectCombobox = document.getElementById('subject-combobox')
         const unitInput = document.getElementById('deck-unit')
         const unitSuggestions = document.getElementById('unit-suggestions')
 
         let allDecks = []
-
-        const { data: subjects } = await supabase
-            .from('subjects')
-            .select('id, name')
-            .order('name')
-
-        if (subjects) {
-            subjects.forEach(s => {
-                const opt = document.createElement('option')
-                opt.value = s.id
-                opt.textContent = s.name
-                subjectSelect.appendChild(opt)
-            })
-        }
+        let allSubjects = []
 
         userEmail.textContent = currentUser.email
         createSection.style.display = 'block'
-
-        subjectSelect.addEventListener('change', async () => {
-            const subjectId = subjectSelect.value
-            unitSuggestions.innerHTML = ''
-            unitInput.value = ''
-
-            if (!subjectId) return
-
-            const { data } = await supabase
-                .from('decks')
-                .select('unit')
-                .eq('subject_id', subjectId)
-
-            const uniqueUnits = sortUnits([...new Set(data.map(d => d.unit).filter(Boolean))])
-
-            // 默认填入第一个
-            if (uniqueUnits.length > 0) {
-                unitInput.value = uniqueUnits[0]
-            }
-
-            // 渲染建议标签
-            unitSuggestions.innerHTML = uniqueUnits.map(u =>
-                `<span class="unit-tag" data-unit="${u}">${u}</span>`
-            ).join('')
-
-            unitSuggestions.querySelectorAll('.unit-tag').forEach(tag => {
-                tag.addEventListener('click', () => {
-                    unitInput.value = tag.dataset.unit
-                })
-            })
-        })
 
         // 登出
         logoutBtn?.addEventListener('click', async () => {
@@ -121,26 +88,41 @@
             e.preventDefault()
             createMessage.textContent = '创建中...'
 
-            const { data, error } = await supabase
-                .from('decks')
-                .insert({
-                    title: deckTitle.value,
-                    user_id: currentUser.id,
-                    subject_id: subjectSelect.value,
-                    unit: unitInput.value,
-                    shuffle: false
-                })
-                .select('id')
-                .single()
+            // 1. 解析学科：如果输入了名字但没从下拉里选，就按名字查重/创建
+            const subjectName = subjectInput.value.trim()
+            if (!subjectName) {
+                createMessage.textContent = '请选择或输入学科'
+                return
+            }
+            let subjectId = subjectHidden.value
+            if (!subjectId) {
+                try {
+                const subj = await createSubject(subjectName)
+                subjectId = subj.id
+                subjectHidden.value = subj.id
+                subjectInput.value = subj.name
+                } catch (err) {
+                createMessage.textContent = '创建学科失败: ' + err.message
+                return
+                }
+            }
+
+            // 2. 创建词卡集
+            const { data, error } = await supabase.from('decks').insert({
+                title: deckTitle.value,
+                user_id: currentUser.id,
+                subject_id: subjectId,
+                unit: unitInput.value,
+                shuffle: false
+            }).select('id').single()
 
             if (error) {
                 createMessage.textContent = 'Error: ' + error.message
                 return
             }
-
             createMessage.textContent = 'Created successfully, redirecting to the edit page...'
             window.location.href = `deck.html?id=${data.id}`
-        })
+            })
 
         document.getElementById('my-profile-link').href = `profile.html?user=${currentUser.id}`
 
@@ -257,6 +239,183 @@
             })
         })
         }
+
+        /* ==================== HTML 转义 ==================== */
+        function esc(s) {
+        return String(s).replace(/[&<>"']/g, c => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[c]))
+        }
+
+        /* ==================== 学科：加载 ==================== */
+        async function loadSubjects() {
+        const { data, error } = await supabase
+            .from('subjects')
+            .select('id, name')
+            .order('name')
+        if (error) {
+            console.error('加载学科失败:', error.message)
+            return
+        }
+        allSubjects = data || []
+        }
+
+        /* ==================== 学科：渲染下拉 ==================== */
+        function renderSubjectDropdown(keyword) {
+        const kw = keyword.trim()
+        const kwLower = kw.toLowerCase()
+
+        const filtered = kw
+            ? allSubjects.filter(s => s.name.toLowerCase().includes(kwLower))
+            : allSubjects
+
+        let html = ''
+        if (filtered.length) {
+            html += filtered.map(s =>
+            `<div class="combobox-option" data-id="${s.id}" data-name="${esc(s.name)}">${esc(s.name)}</div>`
+            ).join('')
+        }
+
+        // 没完全匹配时，显示「+ 创建」
+        const hasExact = allSubjects.some(s => s.name.toLowerCase() === kwLower)
+        if (kw && !hasExact) {
+            html += `<div class="combobox-create" data-name="${esc(kw)}">+ 创建“${esc(kw)}”</div>`
+        }
+
+        if (!html) {
+            html = '<div class="combobox-empty">没有匹配的学科</div>'
+        }
+
+        subjectDropdown.innerHTML = html
+        subjectDropdown.hidden = false
+        }
+
+        function hideSubjectDropdown() {
+        subjectDropdown.hidden = true
+        }
+
+        /* ==================== 学科：选中 ==================== */
+        function selectSubject(id, name) {
+        subjectHidden.value = id
+        subjectInput.value = name
+        hideSubjectDropdown()
+        onSubjectSelected(id)
+        }
+
+        /* ==================== 学科：创建（带去重 + 并发兜底） ==================== */
+        async function createSubject(name) {
+        const trimmed = name.trim()
+        if (!trimmed) return null
+
+        // 1. 先查重（忽略大小写）
+        const { data: existing } = await supabase
+            .from('subjects')
+            .select('id, name')
+            .ilike('name', trimmed)
+            .maybeSingle()
+        if (existing) return existing
+
+        // 2. 插入
+        const { data, error } = await supabase
+            .from('subjects')
+            .insert({ name: trimmed })
+            .select('id, name')
+            .single()
+
+        if (error) {
+            // 3. 并发场景：唯一索引冲突，重新查一次复用
+            if (error.code === '23505') {
+            const { data: again } = await supabase
+                .from('subjects')
+                .select('id, name')
+                .ilike('name', trimmed)
+                .maybeSingle()
+            if (again) return again
+            }
+            throw error
+        }
+
+        // 4. 更新本地缓存
+        allSubjects.push(data)
+        allSubjects.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+        return data
+        }
+
+        /* ==================== 学科：切换后加载单元建议 ==================== */
+        async function onSubjectSelected(subjectId) {
+        unitSuggestions.innerHTML = ''
+        unitInput.value = ''
+        if (!subjectId) return
+
+        const { data } = await supabase
+            .from('decks')
+            .select('unit')
+            .eq('subject_id', subjectId)
+
+        const uniqueUnits = sortUnits(
+            [...new Set((data || []).map(d => d.unit).filter(Boolean))]
+        )
+
+        if (uniqueUnits.length > 0) {
+            unitInput.value = uniqueUnits[0]
+        }
+
+        unitSuggestions.innerHTML = uniqueUnits.map(u =>
+            `<span class="unit-tag" data-unit="${esc(u)}">${esc(u)}</span>`
+        ).join('')
+
+        unitSuggestions.querySelectorAll('.unit-tag').forEach(tag => {
+            tag.addEventListener('click', () => {
+            unitInput.value = tag.dataset.unit
+            })
+        })
+        }
+
+        /* ==================== 学科：组合框事件 ==================== */
+        subjectInput.addEventListener('focus', () => {
+        renderSubjectDropdown(subjectInput.value)
+        })
+
+        subjectInput.addEventListener('input', () => {
+        // 用户改动了文字，之前选中的 id 作废，提交时再按名字查重/创建
+        subjectHidden.value = ''
+        renderSubjectDropdown(subjectInput.value)
+        })
+
+        // 用 mousedown 而不是 click，防止 input blur 先触发导致下拉被关掉
+        subjectDropdown.addEventListener('mousedown', async (e) => {
+        const option = e.target.closest('.combobox-option')
+        const createBtn = e.target.closest('.combobox-create')
+
+        if (option) {
+            e.preventDefault()
+            selectSubject(option.dataset.id, option.dataset.name)
+            return
+        }
+
+        if (createBtn) {
+            e.preventDefault()
+            const name = createBtn.dataset.name
+            createBtn.textContent = '创建中...'
+            try {
+            const subj = await createSubject(name)
+            selectSubject(subj.id, subj.name)
+            } catch (err) {
+            createMessage.textContent = '创建学科失败: ' + err.message
+            renderSubjectDropdown(subjectInput.value)
+            }
+        }
+        })
+
+        // 点击组合框外部关闭下拉
+        document.addEventListener('click', (e) => {
+        if (!subjectCombobox.contains(e.target)) {
+            hideSubjectDropdown()
+        }
+        })
+
+        // 初始加载学科列表
+        await loadSubjects()
 
         loadDecks()
     </script>
