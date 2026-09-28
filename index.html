@@ -1,516 +1,639 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Griffin Vocab</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Griffin Vocab</title>
+  <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <header>
-        <h1>Griffin Vocab</h1>
-        <div id="user-area">
-            <a id="my-profile-link" href="#">My Decks</a>
-            <a href="my-learning.html">My Learning</a>
-            <a href="settings.html">Settings</a>
-            <span id="user-email"></span>
-            <button id="logout-btn">Log out</button>
-        </div>
-    </header>
+  <header>
+    <h1>Griffin Vocab</h1>
+    <div id="user-area">
+      <a id="my-profile-link" href="#">My Decks</a>
+      <a href="my-learning.html">My Learning</a>
+      <a href="settings.html">Settings</a>
+      <span id="user-email"></span>
+      <button id="logout-btn">Log out</button>
+    </div>
+  </header>
 
-    <section id="create-section" style="display:none;">
-        <h2>Create Deck</h2>
-        <form id="create-deck-form">
-            <input type="text" id="deck-title" placeholder="Deck Title, e.g., Fruit Vocabulary" required>
-            <div class="combobox" id="subject-combobox">
-                <input
-                    type="text"
-                    id="subject-input"
-                    placeholder="Search or enter a new subject..."
-                    autocomplete="off"
-                    required
-                >
-                <input type="hidden" id="deck-subject">
-                <div class="combobox-dropdown" id="subject-dropdown" hidden></div>
-            </div>
+  <section id="create-section" style="display:none;">
+    <h2>Create Deck</h2>
+    <form id="create-deck-form">
+      <input type="text" id="deck-title" placeholder="Deck Title, e.g., Fruit Vocabulary" required>
 
-            <input type="text" id="deck-unit" placeholder="Unit, e.g., Chapter 1" required>
-            <p id="unit-hint" class="unit-hint" hidden></p>
-            <div id="unit-suggestions"></div>
-            <button type="submit">Create</button>
-        </form>
-        <p id="create-message"></p>
-    </section>
+      <!-- 学科组合框 -->
+      <div class="combobox" id="subject-combobox">
+        <input
+          type="text"
+          id="subject-input"
+          placeholder="Search or enter a new subject..."
+          autocomplete="off"
+          required
+        >
+        <input type="hidden" id="deck-subject">
+        <div class="combobox-dropdown" id="subject-dropdown" hidden></div>
+      </div>
 
-    <section>
-        <h2>All Decks</h2>
-        <input type="text" id="search-input" placeholder="Search by title or author...">
-        <div id="decks-list">Loading...</div>
-    </section>
+      <!-- 单元结构化输入 -->
+      <div class="unit-builder">
+        <select id="unit-header">
+          <option value="">None</option>
+          <option value="Unit">Unit</option>
+          <option value="Chapter">Chapter</option>
+          <option value="Module">Module</option>
+          <option value="Part">Part</option>
+          <option value="Day">Day</option>
+          <option value="Week">Week</option>
+          <option value="Lesson">Lesson</option>
+          <option value="Section">Section</option>
+          <option value="__custom__">Custom…</option>
+        </select>
+        <input type="text" id="unit-header-custom" placeholder="Prefix" hidden>
+        <input type="number" id="unit-num" min="1" step="1" placeholder="1" hidden>
+        <span class="unit-sep" id="unit-sep" hidden>-</span>
+        <input type="text" id="unit-title" placeholder="Title (optional)">
+      </div>
+      <input type="hidden" id="deck-unit">
+      <p id="unit-hint" class="unit-hint" hidden></p>
+      <div id="unit-suggestions"></div>
 
-    <script type="module">
-        
-       import { supabase, requireLogin, logout, compareUnits, sortUnits } from './script.js'
+      <button type="submit">Create</button>
+    </form>
+    <p id="create-message"></p>
+  </section>
 
-        const currentUser = await requireLogin()
-        if (!currentUser) throw new Error('Not login, redirecting...')
+  <section>
+    <h2>All Decks</h2>
+    <input type="text" id="search-input" placeholder="Search by title or author...">
+    <div id="decks-list">Loading...</div>
+  </section>
 
-        const userArea = document.getElementById('user-area')
-        const userEmail = document.getElementById('user-email')
-        const logoutBtn = document.getElementById('logout-btn')
-        const createSection = document.getElementById('create-section')
-        const createForm = document.getElementById('create-deck-form')
-        const deckTitle = document.getElementById('deck-title')
-        const createMessage = document.getElementById('create-message')
-        const decksList = document.getElementById('decks-list')
-        const subjectInput = document.getElementById('subject-input')
-        const subjectDropdown = document.getElementById('subject-dropdown')
-        const subjectHidden = document.getElementById('deck-subject')
-        const subjectCombobox = document.getElementById('subject-combobox')
-        const unitInput = document.getElementById('deck-unit')
-        const unitSuggestions = document.getElementById('unit-suggestions')
-        const unitHint = document.getElementById('unit-hint')
+  <script type="module">
+    import { supabase, requireLogin, logout, compareUnits, sortUnits } from './script.js'
 
-        let allDecks = []
-        let allSubjects = []
+    const currentUser = await requireLogin()
+    if (!currentUser) throw new Error('Not login, redirecting...')
 
-        userEmail.textContent = currentUser.email
-        createSection.style.display = 'block'
+    /* ==================== DOM 引用 ==================== */
+    const userEmail       = document.getElementById('user-email')
+    const logoutBtn       = document.getElementById('logout-btn')
+    const createSection   = document.getElementById('create-section')
+    const createForm      = document.getElementById('create-deck-form')
+    const deckTitle       = document.getElementById('deck-title')
+    const createMessage   = document.getElementById('create-message')
+    const decksList       = document.getElementById('decks-list')
 
-        
-        // 登出
-        logoutBtn?.addEventListener('click', async () => {
-            await logout()
-        })
+    const subjectInput    = document.getElementById('subject-input')
+    const subjectDropdown = document.getElementById('subject-dropdown')
+    const subjectHidden   = document.getElementById('deck-subject')
+    const subjectCombobox = document.getElementById('subject-combobox')
 
-        // 创建词卡集
-        createForm?.addEventListener('submit', async (e) => {
-            e.preventDefault()
-            createMessage.textContent = 'Creating...'
+    const unitHeaderSelect = document.getElementById('unit-header')
+    const unitHeaderCustom = document.getElementById('unit-header-custom')
+    const unitNum          = document.getElementById('unit-num')
+    const unitSep          = document.getElementById('unit-sep')
+    const unitTitle        = document.getElementById('unit-title')
+    const deckUnitHidden   = document.getElementById('deck-unit')
+    const unitSuggestions  = document.getElementById('unit-suggestions')
+    const unitHint         = document.getElementById('unit-hint')
 
-            // 1. 解析学科：如果输入了名字但没从下拉里选，就按名字查重/创建
-            const subjectName = subjectInput.value.trim()
-            if (!subjectName) {
-                createMessage.textContent = 'Please select or enter a subject'
-                return
-            }
-            let subjectId = subjectHidden.value
-            if (!subjectId) {
-                try {
-                const subj = await createSubject(subjectName)
-                subjectId = subj.id
-                subjectHidden.value = subj.id
-                subjectInput.value = subj.name
-                } catch (err) {
-                createMessage.textContent = 'Failed to create subject: ' + err.message
-                return
-                }
-            }
+    /* ==================== 状态 ==================== */
+    let allDecks = []
+    let allSubjects = []
+    const collapsedState = new Map() // subject -> boolean（true = 展开）
 
-            // 2. 创建词卡集
-            const { data, error } = await supabase.from('decks').insert({
-                title: deckTitle.value,
-                user_id: currentUser.id,
-                subject_id: subjectId,
-                unit: unitInput.value,
-                shuffle: false
-            }).select('id').single()
+    userEmail.textContent = currentUser.email
+    createSection.style.display = 'block'
 
-            if (error) {
-                createMessage.textContent = 'Error: ' + error.message
-                return
-            }
-            createMessage.textContent = 'Created successfully, redirecting to the edit page...'
-            window.location.href = `deck.html?id=${data.id}`
-            })
+    /* ==================== 工具：HTML 转义 ==================== */
+    function esc(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]))
+    }
 
-        document.getElementById('my-profile-link').href = `profile.html?user=${currentUser.id}`
+    /* ==================== 登出 ==================== */
+    logoutBtn?.addEventListener('click', async () => {
+      await logout()
+    })
 
-        document.getElementById('search-input').addEventListener('input', (e) => {
-            const keyword = e.target.value.trim().toLowerCase()
+    /* ==================== 创建词卡集 ==================== */
+    createForm?.addEventListener('submit', async (e) => {
+      e.preventDefault()
+      createMessage.textContent = 'Creating...'
 
-            if (!keyword) {
-                renderDecks(allDecks)
-                return
-            }
-
-            const filtered = allDecks.filter(deck => {
-                const title = (deck.title || '').toLowerCase()
-                const author = (deck.profiles?.username || '').toLowerCase()
-                return title.includes(keyword) || author.includes(keyword)
-            })
-
-            renderDecks(filtered)
-        })
-
-        async function loadDecks() {
-            const { data, error } = await supabase
-                .from('decks')
-                .select('*, cards(count), profiles(username), subjects(name)')
-                .order('created_at', { ascending: false })
-
-            if (error) {
-                decksList.textContent = 'Failed to load: ' + error.message
-                return
-            }
-
-            allDecks = data
-            renderDecks(allDecks)
+      // 1. 解析学科：若输入了名字但没从下拉里选，按名字查重/创建
+      const subjectName = subjectInput.value.trim()
+      if (!subjectName) {
+        createMessage.textContent = 'Please select or enter a subject'
+        return
+      }
+      let subjectId = subjectHidden.value
+      if (!subjectId) {
+        try {
+          const subj = await createSubject(subjectName)
+          subjectId = subj.id
+          subjectHidden.value = subj.id
+          subjectInput.value = subj.name
+        } catch (err) {
+          createMessage.textContent = 'Failed to create subject: ' + err.message
+          return
         }
+      }
 
-        // 记住用户手动展开/折叠过的学科，搜索时保持状态
-        const collapsedState = new Map() // subject -> boolean（true = 展开）
+      // 2. 校验单元
+      const unitStr = deckUnitHidden.value.trim()
+      if (!unitStr) {
+        createMessage.textContent = 'Please fill in the unit'
+        return
+      }
 
-        function renderDecks(decks) {
-        if (decks.length === 0) {
-            decksList.textContent = 'No matching decks found.'
-            return
-        }
+      // 3. 创建词卡集
+      const { data, error } = await supabase.from('decks').insert({
+        title: deckTitle.value,
+        user_id: currentUser.id,
+        subject_id: subjectId,
+        unit: unitStr,
+        shuffle: false
+      }).select('id').single()
 
-        // 按学科 → 单元分组
-        const grouped = {}
-        decks.forEach(deck => {
-            const subject = deck.subjects?.name || 'Uncategorized'
-            const unit = deck.unit || 'Unassigned Unit'
-            if (!grouped[subject]) grouped[subject] = {}
-            if (!grouped[subject][unit]) grouped[subject][unit] = []
-            grouped[subject][unit].push(deck)
-        })
+      if (error) {
+        createMessage.textContent = 'Error: ' + error.message
+        return
+      }
+      createMessage.textContent = 'Created successfully, redirecting to the edit page...'
+      window.location.href = `deck.html?id=${data.id}`
+    })
 
-        let html = ''
+    document.getElementById('my-profile-link').href = `profile.html?user=${currentUser.id}`
 
-        // 外层：学科。subject 由回调参数提供，内层才能引用
-        Object.keys(grouped).sort(compareUnits).forEach(subject => {
-            const isOpen = collapsedState.get(subject) === true
-            const deckCount = Object.values(grouped[subject])
-            .reduce((sum, arr) => sum + arr.length, 0)
+    /* ==================== 搜索 ==================== */
+    document.getElementById('search-input').addEventListener('input', (e) => {
+      const keyword = e.target.value.trim().toLowerCase()
+      if (!keyword) {
+        renderDecks(allDecks)
+        return
+      }
+      const filtered = allDecks.filter(deck => {
+        const title = (deck.title || '').toLowerCase()
+        const author = (deck.profiles?.username || '').toLowerCase()
+        return title.includes(keyword) || author.includes(keyword)
+      })
+      renderDecks(filtered)
+    })
+
+    /* ==================== 首页：加载词卡集 ==================== */
+    async function loadDecks() {
+      const { data, error } = await supabase
+        .from('decks')
+        .select('*, cards(count), profiles(username), subjects(name)')
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        decksList.textContent = 'Failed to load: ' + error.message
+        return
+      }
+      allDecks = data
+      renderDecks(allDecks)
+    }
+
+    /* ==================== 首页：渲染词卡集 ==================== */
+    function renderDecks(decks) {
+      if (decks.length === 0) {
+        decksList.textContent = 'No matching decks found.'
+        return
+      }
+
+      // 按学科 → 单元分组
+      const grouped = {}
+      decks.forEach(deck => {
+        const subject = deck.subjects?.name || 'Uncategorized'
+        const unit = deck.unit || 'Unassigned Unit'
+        if (!grouped[subject]) grouped[subject] = {}
+        if (!grouped[subject][unit]) grouped[subject][unit] = []
+        grouped[subject][unit].push(deck)
+      })
+
+      let html = ''
+
+      Object.keys(grouped).sort(compareUnits).forEach(subject => {
+        const isOpen = collapsedState.get(subject) === true
+        const deckCount = Object.values(grouped[subject])
+          .reduce((sum, arr) => sum + arr.length, 0)
+
+        html += `
+          <div class="subject-group${isOpen ? ' open' : ''}" data-subject="${subject}">
+            <button class="subject-header" type="button">
+              <span class="subject-name">${subject}</span>
+              <span class="subject-meta">${deckCount} decks</span>
+              <span class="subject-arrow">▾</span>
+            </button>
+            <div class="subject-body">
+        `
+
+        Object.keys(grouped[subject]).sort(compareUnits).forEach(unit => {
+          html += `<h3>${unit}</h3>`
+
+          const decksInUnit = [...grouped[subject][unit]]
+            .sort((a, b) => compareUnits(a.title, b.title))
+
+          decksInUnit.forEach(deck => {
+            const isOwner = deck.user_id === currentUser.id
+            const target = isOwner
+              ? `deck.html?id=${deck.id}`
+              : `study.html?id=${deck.id}`
+            const cardCount = deck.cards?.[0]?.count ?? 0
+            const author = deck.profiles?.username || 'Anonymous'
 
             html += `
-            <div class="subject-group${isOpen ? ' open' : ''}" data-subject="${subject}">
-                <button class="subject-header" type="button">
-                <span class="subject-name">${subject}</span>
-                <span class="subject-meta">${deckCount} decks</span>
-                <span class="subject-arrow">▾</span>
-                </button>
-                <div class="subject-body">
+              <div class="deck-item">
+                <a href="${target}">${deck.title}</a>
+                <div class="deck-meta">
+                  Author: <a href="profile.html?user=${deck.user_id}">${author}</a> · ${cardCount} cards
+                </div>
+              </div>
             `
+          })
+        })
 
-            // 内层：单元。subject 来自外层作用域，unit 来自本层回调参数
-            Object.keys(grouped[subject]).sort(compareUnits).forEach(unit => {
-            html += `<h3>${unit}</h3>`
-            const decksInUnit = [...grouped[subject][unit]].sort((a, b) =>
-                compareUnits(a.title, b.title)
-            )
-
-            decksInUnit.forEach(deck => {
-                const isOwner = deck.user_id === currentUser.id
-                const target = isOwner
-                ? `deck.html?id=${deck.id}`
-                : `study.html?id=${deck.id}`
-                const cardCount = deck.cards?.[0]?.count ?? 0
-                const author = deck.profiles?.username || 'Anonymous'
-
-                html += `
-                <div class="deck-item">
-                    <a href="${target}">${deck.title}</a>
-                    <div class="deck-meta">
-                    Author: <a href="profile.html?user=${deck.user_id}">${author}</a> · ${cardCount} cards
-                    </div>
-                </div>
-                `
-            })
-            })
-
-            html += `
-                </div>
+        html += `
             </div>
-            `
+          </div>
+        `
+      })
+
+      decksList.innerHTML = html
+
+      decksList.querySelectorAll('.subject-header').forEach(header => {
+        header.addEventListener('click', () => {
+          const group = header.closest('.subject-group')
+          const subject = group.dataset.subject
+          const nowOpen = group.classList.toggle('open')
+          collapsedState.set(subject, nowOpen)
         })
+      })
+    }
 
-        decksList.innerHTML = html
+    /* ==================== 学科：加载 ==================== */
+    async function loadSubjects() {
+      const { data, error } = await supabase
+        .from('subjects')
+        .select('id, name')
+        .order('name')
+      if (error) {
+        console.error('加载学科失败:', error.message)
+        return
+      }
+      allSubjects = data || []
+    }
 
-        // 绑定学科头的展开 / 折叠
-        decksList.querySelectorAll('.subject-header').forEach(header => {
-            header.addEventListener('click', () => {
-            const group = header.closest('.subject-group')
-            const subject = group.dataset.subject
-            const nowOpen = group.classList.toggle('open')
-            collapsedState.set(subject, nowOpen)
-            })
-        })
-        }
+    /* ==================== 学科：渲染下拉 ==================== */
+    function renderSubjectDropdown(keyword) {
+      const kw = keyword.trim()
+      const kwLower = kw.toLowerCase()
 
-        /* ==================== HTML 转义 ==================== */
-        function esc(s) {
-        return String(s).replace(/[&<>"']/g, c => ({
-            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
-        }[c]))
-        }
+      const filtered = kw
+        ? allSubjects.filter(s => s.name.toLowerCase().includes(kwLower))
+        : allSubjects
 
-        /* ==================== 学科：加载 ==================== */
-        async function loadSubjects() {
-        const { data, error } = await supabase
-            .from('subjects')
-            .select('id, name')
-            .order('name')
-        if (error) {
-            console.error('加载学科失败:', error.message)
-            return
-        }
-        allSubjects = data || []
-        }
+      let html = ''
+      if (filtered.length) {
+        html += filtered.map(s =>
+          `<div class="combobox-option" data-id="${s.id}" data-name="${esc(s.name)}">${esc(s.name)}</div>`
+        ).join('')
+      }
 
-        /* ==================== 学科：渲染下拉 ==================== */
-        function renderSubjectDropdown(keyword) {
-        const kw = keyword.trim()
-        const kwLower = kw.toLowerCase()
+      const hasExact = allSubjects.some(s => s.name.toLowerCase() === kwLower)
+      if (kw && !hasExact) {
+        html += `<div class="combobox-create" data-name="${esc(kw)}">+ Create "${esc(kw)}"</div>`
+      }
 
-        const filtered = kw
-            ? allSubjects.filter(s => s.name.toLowerCase().includes(kwLower))
-            : allSubjects
+      if (!html) {
+        html = '<div class="combobox-empty">No matching subjects</div>'
+      }
 
-        let html = ''
-        if (filtered.length) {
-            html += filtered.map(s =>
-            `<div class="combobox-option" data-id="${s.id}" data-name="${esc(s.name)}">${esc(s.name)}</div>`
-            ).join('')
-        }
+      subjectDropdown.innerHTML = html
+      subjectDropdown.hidden = false
+    }
 
-        // 没完全匹配时，显示「+ 创建」
-        const hasExact = allSubjects.some(s => s.name.toLowerCase() === kwLower)
-        if (kw && !hasExact) {
-            html += `<div class="combobox-create" data-name="${esc(kw)}">+ Create "${esc(kw)}"</div>`
-        }
+    function hideSubjectDropdown() {
+      subjectDropdown.hidden = true
+    }
 
-        if (!html) {
-            html = '<div class="combobox-empty">No matching subjects</div>'
-        }
+    /* ==================== 学科：选中 ==================== */
+    function selectSubject(id, name) {
+      subjectHidden.value = id
+      subjectInput.value = name
+      hideSubjectDropdown()
+      onSubjectSelected(id)
+    }
 
-        subjectDropdown.innerHTML = html
-        subjectDropdown.hidden = false
-        }
+    /* ==================== 学科：创建（带去重 + 并发兜底） ==================== */
+    async function createSubject(name) {
+      const trimmed = name.trim()
+      if (!trimmed) return null
 
-        function hideSubjectDropdown() {
-        subjectDropdown.hidden = true
-        }
+      const { data: existing } = await supabase
+        .from('subjects')
+        .select('id, name')
+        .ilike('name', trimmed)
+        .maybeSingle()
+      if (existing) return existing
 
-        /* ==================== 单元：智能推荐 ==================== */
-        // 分析已有单元，推断命名模式并返回下一个推荐值
-        // 支持：Unit 1 / Chapter 2 / 第1章 / Day 3 / 1.2 等
-        function getRecommendedUnit(units) {
-        if (!units.length) return ''
+      const { data, error } = await supabase
+        .from('subjects')
+        .insert({ name: trimmed })
+        .select('id, name')
+        .single()
 
-        const pattern = /^(.*?)(\d+)(.*)$/
-        const groups = new Map() // prefix -> { max, count, suffixes }
-
-        units.forEach(u => {
-            const m = String(u).match(pattern)
-            if (!m) return
-            const prefix = m[1]
-            const num = parseInt(m[2], 10)
-            const suffix = m[3]
-
-            if (!groups.has(prefix)) {
-            groups.set(prefix, { max: num, count: 1, suffixes: new Set([suffix]) })
-            } else {
-            const info = groups.get(prefix)
-            if (num > info.max) info.max = num
-            info.count++
-            info.suffixes.add(suffix)
-            }
-        })
-
-        // 没有可识别的"前缀+数字"模式，退回第一个已有单元
-        if (groups.size === 0) return units[0]
-
-        // 选出现次数最多的前缀（最主流的命名方式）
-        let best = null
-        let bestCount = 0
-        for (const [prefix, info] of groups) {
-            if (info.count > bestCount) {
-            bestCount = info.count
-            best = { prefix, ...info }
-            }
-        }
-
-        // 如果所有后缀一致（比如都是"章"），保留后缀
-        const suffix = best.suffixes.size === 1 ? [...best.suffixes][0] : ''
-
-        return `${best.prefix}${best.max + 1}${suffix}`
-        }
-
-        // 生成格式提示文案
-        function describeUnitPattern(units) {
-        const recommended = getRecommendedUnit(units)
-        if (!recommended) return ''
-        const m = recommended.match(/^(.*?)(\d+)(.*)$/)
-        if (!m) return ''
-        return `检测到格式：${m[1]}N${m[3]}`
-        }
-
-        /* ==================== 学科：选中 ==================== */
-        function selectSubject(id, name) {
-        subjectHidden.value = id
-        subjectInput.value = name
-        hideSubjectDropdown()
-        onSubjectSelected(id)
-        }
-
-        /* ==================== 学科：创建（带去重 + 并发兜底） ==================== */
-        async function createSubject(name) {
-        const trimmed = name.trim()
-        if (!trimmed) return null
-
-        // 1. 先查重（忽略大小写）
-        const { data: existing } = await supabase
+      if (error) {
+        if (error.code === '23505') {
+          const { data: again } = await supabase
             .from('subjects')
             .select('id, name')
             .ilike('name', trimmed)
             .maybeSingle()
-        if (existing) return existing
-
-        // 2. 插入
-        const { data, error } = await supabase
-            .from('subjects')
-            .insert({ name: trimmed })
-            .select('id, name')
-            .single()
-
-        if (error) {
-            // 3. 并发场景：唯一索引冲突，重新查一次复用
-            if (error.code === '23505') {
-            const { data: again } = await supabase
-                .from('subjects')
-                .select('id, name')
-                .ilike('name', trimmed)
-                .maybeSingle()
-            if (again) return again
-            }
-            throw error
+          if (again) return again
         }
+        throw error
+      }
 
-        // 4. 更新本地缓存
-        allSubjects.push(data)
-        allSubjects.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
-        return data
+      allSubjects.push(data)
+      allSubjects.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+      return data
+    }
+
+    /* ==================== 单元：解析与拼接 ==================== */
+    // parseUnit:
+    //   "Unit 1 - Basic" → { header:'Unit', num:1, title:'Basic' }
+    //   "Unit 1"         → { header:'Unit', num:1, title:'' }
+    //   "复习"            → { header:'', num:'', title:'复习' }（无前缀）
+    //   ""               → null
+    function parseUnit(str) {
+      const s = String(str || '').trim()
+      if (!s) return null
+      const m = s.match(/^(.+?)\s+(\d+)(?:\s*[-–—]\s*(.+))?$/)
+      if (m) {
+        return {
+          header: m[1].trim(),
+          num: parseInt(m[2], 10),
+          title: (m[3] || '').trim()
         }
+      }
+      return { header: '', num: '', title: s }
+    }
 
-        // ❌ 缺失 1：聚焦时展示全部学科
-        subjectInput.addEventListener('focus', () => {
-        renderSubjectDropdown(subjectInput.value)
+    // buildUnitString:
+    //   header='' + title    → "Title"
+    //   header + num + title → "Header Num - Title"
+    //   header + num         → "Header Num"
+    //   header + no num      → ''（无效）
+    function buildUnitString(header, num, title) {
+      const h = String(header ?? '').trim()
+      const t = String(title ?? '').trim()
+
+      if (!h) return t
+
+      const n = (num === '' || num == null) ? '' : String(num).trim()
+      if (!n) return ''
+      return t ? `${h} ${n} - ${t}` : `${h} ${n}`
+    }
+
+    /* ==================== 单元：智能推荐 ==================== */
+    function getRecommendedUnit(units) {
+      const parsed = units.map(parseUnit).filter(p => p && p.header)
+      if (!parsed.length) return null
+
+      const counts = new Map()
+      parsed.forEach(p => counts.set(p.header, (counts.get(p.header) || 0) + 1))
+
+      let bestHeader = null
+      let bestCount = 0
+      for (const [h, c] of counts) {
+        if (c > bestCount) {
+          bestCount = c
+          bestHeader = h
+        }
+      }
+
+      const maxNum = Math.max(
+        ...parsed.filter(p => p.header === bestHeader).map(p => p.num)
+      )
+      return { header: bestHeader, num: maxNum + 1, title: '' }
+    }
+
+    function describeUnitPattern(units) {
+      const rec = getRecommendedUnit(units)
+      return rec ? `Detected format: ${rec.header} N - Title` : ''
+    }
+
+    /* ==================== 单元：读写 UI ==================== */
+    function getUnitHeader() {
+      const v = unitHeaderSelect.value
+      if (v === '__custom__') return unitHeaderCustom.value.trim()
+      return v // '' 表示 None
+    }
+
+    function syncUnitHidden() {
+      const header = getUnitHeader()
+      const title = unitTitle.value.trim()
+      deckUnitHidden.value = buildUnitString(header, unitNum.value, title)
+    }
+
+    function updateUnitBuilderVisibility() {
+      const isCustom = unitHeaderSelect.value === '__custom__'
+      unitHeaderCustom.hidden = !isCustom
+
+      const noHeader = !getUnitHeader()
+      unitNum.hidden = noHeader
+      unitNum.disabled = noHeader
+      unitSep.hidden = noHeader
+
+      if (noHeader) {
+        unitNum.value = ''
+        unitTitle.placeholder = 'Unit name (e.g., 复习)'
+      } else {
+        unitTitle.placeholder = 'Title (optional)'
+      }
+    }
+
+    function setUnitBuilder(header, num, title) {
+      const opts = [...unitHeaderSelect.options]
+      const preset = opts.find(o => o.value === header && o.value !== '__custom__')
+
+      if (preset) {
+        unitHeaderSelect.value = header
+        unitHeaderCustom.value = ''
+      } else if (header) {
+        unitHeaderSelect.value = '__custom__'
+        unitHeaderCustom.value = header
+      } else {
+        unitHeaderSelect.value = ''
+        unitHeaderCustom.value = ''
+      }
+
+      unitNum.value = (num === '' || num == null) ? '' : num
+      unitTitle.value = title || ''
+
+      updateUnitBuilderVisibility()
+      syncUnitHidden()
+    }
+
+    function resetUnitBuilder() {
+      unitHeaderSelect.value = ''
+      unitHeaderCustom.value = ''
+      unitHeaderCustom.hidden = true
+      unitNum.value = ''
+      unitTitle.value = ''
+      deckUnitHidden.value = ''
+      updateUnitBuilderVisibility()
+    }
+
+    /* ==================== 单元：标签 ==================== */
+    function markActiveUnitTag() {
+      const current = deckUnitHidden.value.trim()
+      unitSuggestions.querySelectorAll('.unit-tag').forEach(tag => {
+        tag.classList.toggle('active', tag.dataset.unit === current)
+      })
+    }
+
+    function renderUnitTags(units, recommended) {
+      const recStr = recommended
+        ? buildUnitString(recommended.header, recommended.num, recommended.title)
+        : ''
+      const isNew = recStr && !units.includes(recStr)
+
+      let html = ''
+      if (isNew) {
+        html += `<span class="unit-tag recommended" data-unit="${esc(recStr)}">${esc(recStr)}</span>`
+      }
+
+      html += units.map(u => {
+        const ok = !!parseUnit(u)
+        const cls = ok ? 'unit-tag' : 'unit-tag unparseable'
+        const tip = ok ? '' : ' title="Legacy unit, format not recognized"'
+        return `<span class="${cls}" data-unit="${esc(u)}"${tip}>${esc(u)}</span>`
+      }).join('')
+
+      unitSuggestions.innerHTML = html
+
+      unitSuggestions.querySelectorAll('.unit-tag:not(.unparseable)').forEach(tag => {
+        tag.addEventListener('click', () => {
+          const p = parseUnit(tag.dataset.unit)
+          if (!p) return
+          setUnitBuilder(p.header, p.num, p.title)
+          markActiveUnitTag()
         })
+      })
 
-        // ❌ 缺失 2：输入时过滤
-        subjectInput.addEventListener('input', () => {
-        subjectHidden.value = ''   // 用户改了文字，之前选中的 id 作废
-        renderSubjectDropdown(subjectInput.value)
-        })
+      markActiveUnitTag()
+    }
 
-        // ❌ 缺失 3：点击下拉项 —— 选中或创建
-        subjectDropdown.addEventListener('mousedown', async (e) => {
-        const option = e.target.closest('.combobox-option')
-        const createBtn = e.target.closest('.combobox-create')
+    /* ==================== 单元：选中学科后初始化 ==================== */
+    async function onSubjectSelected(subjectId) {
+      resetUnitBuilder()
+      unitSuggestions.innerHTML = ''
+      unitHint.hidden = true
 
-        if (option) {
-            e.preventDefault()
-            selectSubject(option.dataset.id, option.dataset.name)
-            return
+      if (!subjectId) return
+
+      const { data } = await supabase
+        .from('decks')
+        .select('unit')
+        .eq('subject_id', subjectId)
+
+      const uniqueUnits = sortUnits(
+        [...new Set((data || []).map(d => d.unit).filter(Boolean))]
+      )
+
+      // 新学科：保持 None，让用户自己决定
+      if (uniqueUnits.length === 0) return
+
+      const rec = getRecommendedUnit(uniqueUnits)
+      if (rec) {
+        setUnitBuilder(rec.header, rec.num, rec.title)
+      }
+
+      const hint = describeUnitPattern(uniqueUnits)
+      if (hint) {
+        unitHint.textContent = hint
+        unitHint.hidden = false
+      }
+
+      renderUnitTags(uniqueUnits, rec)
+    }
+
+    /* ==================== 单元：UI 事件 ==================== */
+    unitHeaderSelect.addEventListener('change', () => {
+      updateUnitBuilderVisibility()
+      syncUnitHidden()
+      markActiveUnitTag()
+      if (unitHeaderSelect.value === '__custom__') unitHeaderCustom.focus()
+    })
+
+    unitHeaderCustom.addEventListener('input', () => {
+      updateUnitBuilderVisibility()
+      syncUnitHidden()
+      markActiveUnitTag()
+    })
+
+    unitNum.addEventListener('input', () => {
+      syncUnitHidden()
+      markActiveUnitTag()
+    })
+
+    unitTitle.addEventListener('input', () => {
+      syncUnitHidden()
+      markActiveUnitTag()
+    })
+
+    /* ==================== 学科组合框事件 ==================== */
+    subjectInput.addEventListener('focus', () => {
+      renderSubjectDropdown(subjectInput.value)
+    })
+
+    subjectInput.addEventListener('input', () => {
+      subjectHidden.value = ''
+      renderSubjectDropdown(subjectInput.value)
+    })
+
+    subjectDropdown.addEventListener('mousedown', async (e) => {
+      const option = e.target.closest('.combobox-option')
+      const createBtn = e.target.closest('.combobox-create')
+
+      if (option) {
+        e.preventDefault()
+        selectSubject(option.dataset.id, option.dataset.name)
+        return
+      }
+
+      if (createBtn) {
+        e.preventDefault()
+        const name = createBtn.dataset.name
+        createBtn.textContent = 'Creating...'
+        try {
+          const subj = await createSubject(name)
+          selectSubject(subj.id, subj.name)
+        } catch (err) {
+          createMessage.textContent = 'Failed to create subject: ' + err.message
+          renderSubjectDropdown(subjectInput.value)
         }
+      }
+    })
 
-        if (createBtn) {
-            e.preventDefault()
-            const name = createBtn.dataset.name
-            createBtn.textContent = 'Creating...'
-            try {
-            const subj = await createSubject(name)
-            selectSubject(subj.id, subj.name)
-            } catch (err) {
-            createMessage.textContent = 'Failed to create subject: ' + err.message
-            renderSubjectDropdown(subjectInput.value)
-            }
-        }
-        })
+    // 点击组合框外部关闭下拉
+    document.addEventListener('click', (e) => {
+      if (!subjectCombobox.contains(e.target)) {
+        hideSubjectDropdown()
+      }
+    })
 
-        /* ==================== 学科：组合框事件 ==================== */
-        async function onSubjectSelected(subjectId) {
-            unitSuggestions.innerHTML = ''
-            unitHint.hidden = true
-            unitInput.value = ''
-            unitInput.placeholder = 'Unit, e.g., Chapter 1 Index'
-            if (!subjectId) return
-
-            const { data } = await supabase
-                .from('decks')
-                .select('unit')
-                .eq('subject_id', subjectId)
-
-            const uniqueUnits = sortUnits(
-                [...new Set((data || []).map(d => d.unit).filter(Boolean))]
-            )
-
-            // 该学科还没有任何单元
-            if (uniqueUnits.length === 0) {
-                unitInput.placeholder = 'e.g., Unit 1, Chapter 1, Day 1'
-                return
-            }
-
-            // 计算推荐
-            const recommended = getRecommendedUnit(uniqueUnits)
-            const isNew = !uniqueUnits.includes(recommended)
-
-            // 预填推荐
-            unitInput.value = recommended
-
-            // 格式提示
-            const hintText = describeUnitPattern(uniqueUnits)
-            if (hintText) {
-                unitHint.textContent = hintText
-                unitHint.hidden = false
-            }
-
-            // 渲染标签：推荐（若为新值）在前，已有单元在后
-            let html = ''
-            if (isNew) {
-                html += `<span class="unit-tag recommended" data-unit="${esc(recommended)}">${esc(recommended)}</span>`
-            }
-            html += uniqueUnits.map(u =>
-                `<span class="unit-tag" data-unit="${esc(u)}">${esc(u)}</span>`
-            ).join('')
-
-            unitSuggestions.innerHTML = html
-
-            // 绑定点击
-            unitSuggestions.querySelectorAll('.unit-tag').forEach(tag => {
-                tag.addEventListener('click', () => {
-                unitInput.value = tag.dataset.unit
-                markActiveUnitTag()
-                })
-            })
-
-            markActiveUnitTag()
-            }
-
-            // 高亮与当前输入匹配的标签
-            function markActiveUnitTag() {
-            const current = unitInput.value.trim()
-            unitSuggestions.querySelectorAll('.unit-tag').forEach(tag => {
-                tag.classList.toggle('active', tag.dataset.unit === current)
-            })
-            }
-
-        // 点击组合框外部关闭下拉
-        document.addEventListener('click', (e) => {
-        if (!subjectCombobox.contains(e.target)) {
-            hideSubjectDropdown()
-        }
-        })
-
-        unitInput.addEventListener('input', markActiveUnitTag)
-
-        // 初始加载学科列表
-        await loadSubjects()
-
-        loadDecks()
-    </script>
+    /* ==================== 初始化 ==================== */
+    updateUnitBuilderVisibility()
+    await loadSubjects()
+    loadDecks()
+  </script>
 </body>
 </html>

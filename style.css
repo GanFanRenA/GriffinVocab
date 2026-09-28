@@ -459,6 +459,62 @@ header h1 {
     background: var(--card-bg);
 }
 
+/* ---------- 单元结构化输入 ---------- */
+.unit-builder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  flex-wrap: wrap;
+}
+
+.unit-builder select,
+.unit-builder input {
+  margin: 0;
+}
+
+#unit-header {
+  flex: 0 0 auto;
+  width: auto;
+  min-width: 116px;
+}
+
+#unit-header-custom {
+  flex: 0 0 120px;
+  width: 120px;
+}
+
+#unit-num {
+  flex: 0 0 84px;
+  width: 84px;
+  text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+#unit-num::-webkit-outer-spin-button,
+#unit-num::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.unit-sep {
+  color: var(--text-muted);
+  font-weight: 600;
+  user-select: none;
+}
+
+#unit-title {
+  flex: 1 1 140px;
+  min-width: 120px;
+}
+
+/* 不符合格式的旧单元，弱化展示 */
+.unit-tag.unparseable {
+  opacity: .6;
+  cursor: not-allowed;
+}
+
 
 /* ========================================================
    词卡集 / 单词卡 列表项
@@ -1489,4 +1545,50 @@ header h1 {
 
 #comments-section.open #comments-body {
   display: block;
+}
+
+/* ---------- Unit builder ---------- */
+.unit-builder {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0;
+  flex-wrap: wrap;
+}
+
+.unit-builder select,
+.unit-builder input {
+  margin: 0;
+}
+
+#unit-header { flex: 0 0 auto; width: auto; min-width: 116px; }
+#unit-header-custom { flex: 0 0 120px; width: 120px; }
+
+#unit-num {
+  flex: 0 0 84px;
+  width: 84px;
+  text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+#unit-num::-webkit-outer-spin-button,
+#unit-num::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+#unit-num[hidden],
+#unit-sep[hidden] { display: none; }
+
+.unit-sep {
+  color: var(--text-muted);
+  font-weight: 600;
+  user-select: none;
+}
+
+#unit-title { flex: 1 1 140px; min-width: 120px; }
+
+.unit-tag.unparseable {
+  opacity: .6;
+  cursor: not-allowed;
 }
